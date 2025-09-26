@@ -121,6 +121,17 @@ export class ElevenLabsService {
             tts: {
               speed: 1, // Normal speaking speed (0.7-1.2 range)
             },
+            audio: {
+              input: {
+                encoding: 'pcm_16000', // 16kHz PCM input
+                sample_rate: 16000,
+              },
+              output: {
+                encoding: 'pcm_16000', // 16kHz PCM output
+                sample_rate: 16000,
+                format: 'raw', // Raw PCM data
+              },
+            },
           },
           dynamic_variables: {},
         };
@@ -202,6 +213,13 @@ export class ElevenLabsService {
         if (audioData && this.onAudio) {
           try {
             const audioBuffer = this.base64ToArrayBuffer(audioData);
+            console.log(
+              `🎵 Received audio chunk: ${audioBuffer.byteLength} bytes (${(
+                audioBuffer.byteLength /
+                2 /
+                16000
+              ).toFixed(2)}s at 16kHz)`
+            );
             this.onAudio(audioBuffer);
           } catch (error) {
             console.error('❌ Error processing audio:', error);

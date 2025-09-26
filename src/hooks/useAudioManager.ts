@@ -75,7 +75,8 @@ export const useAudioManager = (): AudioManager => {
       const processor = audioContext.createScriptProcessor(4096, 1, 1); // Buffer size from config
 
       processor.onaudioprocess = (event) => {
-        if (!isRecordingRef.current) {
+        // Don't record while playing back agent response
+        if (!isRecordingRef.current || isPlaying) {
           return;
         }
 
@@ -114,6 +115,16 @@ export const useAudioManager = (): AudioManager => {
         const resampleRatio = targetSampleRate / sampleRate;
         const outputLength = Math.floor(inputData.length * resampleRatio);
         const resampledData = new Float32Array(outputLength);
+
+        // Log for debugging audio input
+        if (Date.now() - lastAudioSentRef.current > 5000) {
+          // Log every 5 seconds
+          console.log(
+            `🎤 Recording audio: ${sampleRate}Hz -> ${targetSampleRate}Hz, amplitude: ${maxAmplitude.toFixed(
+              4
+            )}`
+          );
+        }
 
         // High-quality resampling with linear interpolation
         for (let i = 0; i < outputLength; i++) {
@@ -156,7 +167,7 @@ export const useAudioManager = (): AudioManager => {
     } catch {
       throw new Error('Failed to access microphone');
     }
-  }, []);
+  }, [isPlaying]); // Add isPlaying dependency for audio collision prevention
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current) {
@@ -180,6 +191,18 @@ export const useAudioManager = (): AudioManager => {
 
   const playAudio = useCallback(async (audioData: ArrayBuffer) => {
     try {
+      // Stop any currently playing audio first to prevent overlap
+      if (currentAudioRef.current) {
+        currentAudioRef.current.stop();
+        currentAudioRef.current = null;
+      }
+
+      if (currentHtmlAudioRef.current) {
+        currentHtmlAudioRef.current.pause();
+        currentHtmlAudioRef.current.currentTime = 0;
+        currentHtmlAudioRef.current = null;
+      }
+
       setIsPlaying(true);
 
       if (!audioContextRef.current) {
@@ -199,8 +222,16 @@ export const useAudioManager = (): AudioManager => {
       const bytesPerSample = 2; // 16-bit = 2 bytes per sample
       const numberOfSamples = audioData.byteLength / bytesPerSample;
 
-      // Use ElevenLabs output sample rate from config
-      const sampleRate = 24000;
+      // Use ElevenLabs Conversational AI output sample rate (16kHz)
+      // Note: Regular TTS uses 24kHz, but Conversational AI uses 16kHz
+      const sampleRate = 16000;
+
+      // Log for debugging
+      console.log(
+        `🔊 Playing audio: ${numberOfSamples} samples at ${sampleRate}Hz (${(
+          numberOfSamples / sampleRate
+        ).toFixed(2)}s)`
+      );
 
       const audioBuffer = audioContext.createBuffer(
         numberOfChannels,
@@ -221,7 +252,7 @@ export const useAudioManager = (): AudioManager => {
       const source = audioContext.createBufferSource();
       source.buffer = audioBuffer;
 
-      // Apply playback speed control if enabled
+      // Apply playback speed control - ensure normal speed
       source.playbackRate.value = 1.0;
 
       // Create gain node for volume control
@@ -240,7 +271,8 @@ export const useAudioManager = (): AudioManager => {
       };
 
       source.start(0);
-    } catch {
+    } catch (error) {
+      console.error('Audio playback error:', error);
       setIsPlaying(false);
       currentAudioRef.current = null;
     }
