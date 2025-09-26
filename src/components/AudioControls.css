@@ -1,0 +1,229 @@
+/* Audio Controls Panel Styles */
+.audio-controls {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 300px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.audio-controls-toggle {
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 0.2s;
+}
+
+.audio-controls-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.audio-controls-panel {
+  padding: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.control-section {
+  margin-bottom: 20px;
+}
+
+.control-section:last-child {
+  margin-bottom: 0;
+}
+
+.control-section h4 {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preset-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preset-buttons button {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+  min-width: 80px;
+}
+
+.preset-buttons button:hover {
+  background: #f0f0f0;
+  border-color: #999;
+}
+
+.preset-buttons button:active {
+  background: #e0e0e0;
+  transform: scale(0.98);
+}
+
+.slider-container {
+  margin: 8px 0;
+}
+
+.slider-container label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: #555;
+}
+
+.speed-slider,
+.volume-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #ddd;
+  outline: none;
+  margin: 8px 0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.speed-slider::-webkit-slider-thumb,
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4caf50;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+}
+
+.speed-slider::-webkit-slider-thumb:hover,
+.volume-slider::-webkit-slider-thumb:hover {
+  background: #45a049;
+  transform: scale(1.1);
+}
+
+.speed-slider::-moz-range-thumb,
+.volume-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4caf50;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.settings-display {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.settings-display div {
+  margin: 2px 0;
+  color: #666;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .audio-controls {
+    background: rgba(30, 30, 30, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .audio-controls-toggle {
+    color: white;
+  }
+
+  .audio-controls-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .audio-controls-panel {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .control-section h4 {
+    color: #ddd;
+  }
+
+  .preset-buttons button {
+    background: #444;
+    color: white;
+    border-color: #666;
+  }
+
+  .preset-buttons button:hover {
+    background: #555;
+    border-color: #888;
+  }
+
+  .slider-container label {
+    color: #ccc;
+  }
+
+  .settings-display {
+    background: #2a2a2a;
+  }
+
+  .settings-display div {
+    color: #bbb;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .audio-controls {
+    position: relative;
+    top: 0;
+    right: 0;
+    margin: 10px;
+    min-width: unset;
+  }
+
+  .preset-buttons button {
+    font-size: 11px;
+    padding: 6px 8px;
+    min-width: 60px;
+  }
+}

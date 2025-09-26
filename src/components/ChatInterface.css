@@ -304,6 +304,33 @@
   cursor: not-allowed;
 }
 
+.test-button {
+  height: 40px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #e6fffa;
+  border: 2px solid #38b2ac;
+  cursor: pointer;
+  font-size: 14px;
+  color: #285e61;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.test-button:hover {
+  background: #b2f5ea;
+  border-color: #319795;
+}
+
+.test-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @keyframes pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.7);
