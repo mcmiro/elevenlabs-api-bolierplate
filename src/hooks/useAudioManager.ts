@@ -18,6 +18,8 @@ export const useAudioManager = (): AudioManager => {
   const streamRef = useRef<MediaStream | null>(null);
   const currentAudioRef = useRef<AudioBufferSourceNode | null>(null);
   const currentHtmlAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioQueueRef = useRef<ArrayBuffer[]>([]); // Audio queue to prevent overlapping
+  const isProcessingAudioRef = useRef(false); // Prevent concurrent audio processing
 
   // Use ref for isRecording to avoid stale closures
   const isRecordingRef = useRef(false);
@@ -173,96 +175,139 @@ export const useAudioManager = (): AudioManager => {
     setIsRecording(false);
   }, []);
 
-  const playAudio = useCallback(async (audioData: ArrayBuffer) => {
-    try {
-      // Stop any currently playing audio first to prevent overlap
-      if (currentAudioRef.current) {
-        currentAudioRef.current.stop();
-        currentAudioRef.current = null;
-      }
-
-      if (currentHtmlAudioRef.current) {
-        currentHtmlAudioRef.current.pause();
-        currentHtmlAudioRef.current.currentTime = 0;
-        currentHtmlAudioRef.current = null;
-      }
-
-      setIsPlaying(true);
-
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext })
-            .webkitAudioContext)();
-      }
-
-      // Resume AudioContext if suspended (common after user interaction requirements)
-      if (audioContextRef.current.state === 'suspended') {
-        await audioContextRef.current.resume();
-      }
-
-      // Use configured sample rates and playback settings
-      const audioContext = audioContextRef.current;
-      const numberOfChannels = 1; // Mono
-      const bytesPerSample = 2; // 16-bit = 2 bytes per sample
-      const numberOfSamples = audioData.byteLength / bytesPerSample;
-
-      // Use ElevenLabs Conversational AI output sample rate (16kHz)
-      // Note: Regular TTS uses 24kHz, but Conversational AI uses 16kHz
-      const sampleRate = 16000;
-
-      // Log for debugging
-      console.log(
-        `🔊 Playing audio: ${numberOfSamples} samples at ${sampleRate}Hz (${(
-          numberOfSamples / sampleRate
-        ).toFixed(2)}s)`
-      );
-
-      const audioBuffer = audioContext.createBuffer(
-        numberOfChannels,
-        numberOfSamples,
-        sampleRate
-      );
-
-      // Convert raw bytes to Float32Array for Web Audio API
-      const int16Array = new Int16Array(audioData);
-      const float32Array = audioBuffer.getChannelData(0);
-
-      // Convert 16-bit integers to floating point values (-1.0 to 1.0)
-      for (let i = 0; i < int16Array.length; i++) {
-        float32Array[i] = int16Array[i] / 32768.0;
-      }
-
-      // Create and play the audio source with speed and volume control
-      const source = audioContext.createBufferSource();
-      source.buffer = audioBuffer;
-
-      // Apply playback speed control - ensure normal speed
-      source.playbackRate.value = 1.0;
-
-      // Create gain node for volume control
-      const gainNode = audioContext.createGain();
-      gainNode.gain.value = 1.0;
-
-      // Connect: source -> gain -> destination
-      source.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      currentAudioRef.current = source;
-
-      source.onended = () => {
-        setIsPlaying(false);
-        currentAudioRef.current = null;
-      };
-
-      source.start(0);
-    } catch (error) {
-      console.error('Audio playback error:', error);
-      setIsPlaying(false);
-      currentAudioRef.current = null;
+  const processAudioQueue = useCallback(async () => {
+    if (isProcessingAudioRef.current || audioQueueRef.current.length === 0) {
+      return;
     }
+
+    isProcessingAudioRef.current = true;
+    setIsPlaying(true);
+
+    while (audioQueueRef.current.length > 0) {
+      const audioData = audioQueueRef.current.shift()!;
+
+      try {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext ||
+            (window as unknown as { webkitAudioContext: typeof AudioContext })
+              .webkitAudioContext)();
+        }
+
+        // Resume AudioContext if suspended
+        if (audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
+
+        const audioContext = audioContextRef.current;
+        const numberOfChannels = 1; // Mono
+        const bytesPerSample = 2; // 16-bit = 2 bytes per sample
+        const numberOfSamples = audioData.byteLength / bytesPerSample;
+
+        // Use ElevenLabs Conversational AI output sample rate (16kHz)
+        const sampleRate = 16000;
+
+        console.log(
+          `🔊 Playing audio chunk: ${numberOfSamples} samples at ${sampleRate}Hz (${(
+            numberOfSamples / sampleRate
+          ).toFixed(2)}s) - Queue remaining: ${audioQueueRef.current.length}`
+        );
+
+        const audioBuffer = audioContext.createBuffer(
+          numberOfChannels,
+          numberOfSamples,
+          sampleRate
+        );
+
+        // Convert raw bytes to Float32Array for Web Audio API
+        const int16Array = new Int16Array(audioData);
+        const float32Array = audioBuffer.getChannelData(0);
+
+        // Convert 16-bit integers to floating point values (-1.0 to 1.0)
+        for (let i = 0; i < int16Array.length; i++) {
+          float32Array[i] = int16Array[i] / 32768.0;
+        }
+
+        // Create and play the audio source
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.playbackRate.value = 1.0;
+
+        // Create gain node for volume control
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 1.0;
+
+        // Connect: source -> gain -> destination
+        source.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        currentAudioRef.current = source;
+
+        // Wait for this chunk to finish before processing next
+        await new Promise<void>((resolve, reject) => {
+          source.onended = () => {
+            console.log('🔇 Audio chunk completed');
+            currentAudioRef.current = null;
+            resolve();
+          };
+
+          // Handle potential playback errors
+          const timeoutId = setTimeout(() => {
+            console.error('Audio playback timeout');
+            currentAudioRef.current = null;
+            reject(new Error('Audio playback timeout'));
+          }, 10000); // 10 second timeout
+
+          source.onended = () => {
+            clearTimeout(timeoutId);
+            console.log('🔇 Audio chunk completed');
+            currentAudioRef.current = null;
+            resolve();
+          };
+
+          source.start(0);
+        });
+      } catch (error) {
+        console.error('Error playing audio chunk:', error);
+        break;
+      }
+    }
+
+    setIsPlaying(false);
+    isProcessingAudioRef.current = false;
+    console.log('🎵 Audio queue processing completed');
   }, []);
 
+  const playAudio = useCallback(
+    async (audioData: ArrayBuffer) => {
+      try {
+        // Following the official Eleven Labs SDK pattern:
+        // Audio chunks should be queued and played sequentially, not discarded
+        audioQueueRef.current.push(audioData);
+
+        // If already processing audio, the queue will be handled when current audio ends
+        if (isProcessingAudioRef.current) {
+          console.log(
+            '🎵 Audio chunk queued (current queue length:',
+            audioQueueRef.current.length,
+            ')'
+          );
+          return;
+        }
+
+        await processAudioQueue();
+      } catch (error) {
+        console.error('Audio playback error:', error);
+        setIsPlaying(false);
+        isProcessingAudioRef.current = false;
+      }
+    },
+    [processAudioQueue]
+  );
+
   const stopAudio = useCallback(() => {
+    // Clear the audio queue to stop all pending audio
+    audioQueueRef.current = [];
+
     // Stop HTML5 Audio element if playing
     if (currentHtmlAudioRef.current) {
       currentHtmlAudioRef.current.pause();
@@ -277,6 +322,8 @@ export const useAudioManager = (): AudioManager => {
     }
 
     setIsPlaying(false);
+    isProcessingAudioRef.current = false; // Reset processing flag
+    console.log('🛑 Audio stopped and queue cleared');
   }, []);
 
   return {

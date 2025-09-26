@@ -196,22 +196,27 @@ export class ElevenLabsService {
         const event = message.audio_event as {
           audio?: string;
           audio_base_64?: string;
+          event_id?: string;
         };
 
         const audioData = event?.audio_base_64 || event?.audio;
         if (audioData && this.onAudio) {
           try {
             const audioBuffer = this.base64ToArrayBuffer(audioData);
+            const duration = audioBuffer.byteLength / 2 / 16000; // 16-bit samples at 16kHz
+
             console.log(
-              `🎵 Received audio chunk: ${audioBuffer.byteLength} bytes (${(
-                audioBuffer.byteLength /
-                2 /
-                16000
-              ).toFixed(2)}s at 16kHz)`
+              `🎵 Received audio chunk: ${
+                audioBuffer.byteLength
+              } bytes (${duration.toFixed(2)}s at 16kHz) - Event ID: ${
+                event.event_id || 'none'
+              }`
             );
+
+            // Pass to audio queue for proper sequential playback (following official SDK pattern)
             this.onAudio(audioBuffer);
           } catch (error) {
-            console.error('❌ Error processing audio:', error);
+            console.error('❌ Error processing audio chunk:', error);
           }
         }
         break;
@@ -236,7 +241,34 @@ export class ElevenLabsService {
         this.lastPingTime = Date.now();
         break;
       }
+      case 'user_transcript': {
+        // Handle user speech recognition feedback (official SDK pattern)
+        const event = message.user_transcript_event as {
+          user_transcript?: string;
+        };
+        if (event?.user_transcript && this.onMessage) {
+          const transcript = event.user_transcript.trim();
+          if (transcript) {
+            console.log('🎤 User transcript:', transcript);
+            // Could emit this as a different event type if needed
+          }
+        }
+        break;
+      }
+      case 'agent_response_correction': {
+        // Handle agent response corrections (official SDK pattern)
+        const event = message.agent_response_correction_event as {
+          original?: string;
+          corrected?: string;
+        };
+        if (event?.corrected && this.onMessage) {
+          this.onMessage(event.corrected);
+        }
+        break;
+      }
       default:
+        // Log unknown message types for debugging
+        console.log('🔍 Unknown message type:', message.type, message);
     }
   }
 
