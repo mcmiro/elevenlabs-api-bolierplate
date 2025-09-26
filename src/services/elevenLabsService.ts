@@ -121,17 +121,6 @@ export class ElevenLabsService {
             tts: {
               speed: 1, // Normal speaking speed (0.7-1.2 range)
             },
-            audio: {
-              input: {
-                encoding: 'pcm_16000', // 16kHz PCM input
-                sample_rate: 16000,
-              },
-              output: {
-                encoding: 'pcm_16000', // 16kHz PCM output
-                sample_rate: 16000,
-                format: 'raw', // Raw PCM data
-              },
-            },
           },
           dynamic_variables: {},
         };

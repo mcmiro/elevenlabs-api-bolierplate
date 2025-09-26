@@ -27,7 +27,7 @@ export const useAudioManager = (): AudioManager => {
     undefined
   );
 
-  // Update the ref whenever isRecording changes
+  // Update the refs whenever states change
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
@@ -75,8 +75,8 @@ export const useAudioManager = (): AudioManager => {
       const processor = audioContext.createScriptProcessor(4096, 1, 1); // Buffer size from config
 
       processor.onaudioprocess = (event) => {
-        // Don't record while playing back agent response
-        if (!isRecordingRef.current || isPlaying) {
+        // Keep microphone active continuously - let ElevenLabs handle turn-taking
+        if (!isRecordingRef.current) {
           return;
         }
 
@@ -94,22 +94,7 @@ export const useAudioManager = (): AudioManager => {
         const inputData = inputBuffer.getChannelData(0);
         const sampleRate = audioContextRef.current?.sampleRate || 44100;
 
-        // Check if there's actual audio data (not just silence) using configurable threshold
-        let hasAudio = false;
-        let maxAmplitude = 0;
-        for (let i = 0; i < inputData.length; i++) {
-          const amplitude = Math.abs(inputData[i]);
-          maxAmplitude = Math.max(maxAmplitude, amplitude);
-          if (amplitude > 0.01) {
-            hasAudio = true;
-          }
-        }
-
-        // Skip silent chunks to avoid sending unnecessary data
-        if (!hasAudio) {
-          return;
-        }
-
+        // Send all audio continuously - no silence detection
         // Always resample to configured target rate for ElevenLabs compatibility
         const targetSampleRate = 16000;
         const resampleRatio = targetSampleRate / sampleRate;
@@ -120,9 +105,7 @@ export const useAudioManager = (): AudioManager => {
         if (Date.now() - lastAudioSentRef.current > 5000) {
           // Log every 5 seconds
           console.log(
-            `🎤 Recording audio: ${sampleRate}Hz -> ${targetSampleRate}Hz, amplitude: ${maxAmplitude.toFixed(
-              4
-            )}`
+            `🎤 Recording audio: ${sampleRate}Hz -> ${targetSampleRate}Hz`
           );
         }
 
@@ -164,10 +147,11 @@ export const useAudioManager = (): AudioManager => {
       mediaRecorderRef.current = processor as unknown as MediaRecorder;
 
       setIsRecording(true);
+      console.log('🎤 Microphone recording started successfully');
     } catch {
       throw new Error('Failed to access microphone');
     }
-  }, [isPlaying]); // Add isPlaying dependency for audio collision prevention
+  }, []); // Remove isPlaying dependency - let microphone run continuously
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current) {

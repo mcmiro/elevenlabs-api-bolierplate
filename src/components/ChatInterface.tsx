@@ -122,12 +122,15 @@ export const ChatInterface: React.FC = () => {
 
           // Only set up audio chunk handler when connected
           if (state === 'connected') {
-            // Set up the audio chunk handler
+            // Set up the audio chunk handler - continuous audio streaming
             const chunkHandler = (chunk: ArrayBuffer) => {
               try {
+                // Don't send audio if we're not connected
                 if (!elevenLabsServiceRef.current?.isConnected()) {
                   return;
                 }
+
+                // Send all audio continuously - let ElevenLabs handle turn-taking
                 elevenLabsServiceRef.current?.sendAudioChunk(chunk);
               } catch (error) {
                 setError(
@@ -139,9 +142,28 @@ export const ChatInterface: React.FC = () => {
             };
 
             audioManager.onAudioChunk = chunkHandler;
+
+            // Automatically start recording when connected
+            console.log(
+              '🔗 Connected to agent - starting microphone automatically'
+            );
+            audioManager
+              .startRecording()
+              .then(() => {
+                console.log('✅ Auto-recording started successfully');
+                // Clear any previous errors
+                setError('');
+              })
+              .catch((err) => {
+                console.warn('⚠️ Could not auto-start recording:', err);
+                setError(
+                  'Could not start microphone automatically. Click the mic button to start recording.'
+                );
+              });
           } else {
-            // Clear audio handler when disconnected
+            // Clear audio handler and stop recording when disconnected
             audioManager.onAudioChunk = undefined;
+            audioManager.stopRecording();
           }
         },
       });
