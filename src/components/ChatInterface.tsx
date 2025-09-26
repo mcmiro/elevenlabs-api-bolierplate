@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioManager } from '../hooks/useAudioManager';
 import { ElevenLabsService } from '../services/elevenLabsService';
-import { testApiKeyManually, testSignedUrlManually } from '../utils/debugApi';
-import { testMicrophone } from '../utils/microphoneTest';
-import { runMinimalTest } from '../utils/minimalTest';
 import './ChatInterface.css';
 
 interface Message {
@@ -53,21 +50,13 @@ export const ChatInterface: React.FC = () => {
       return;
     }
 
-    const manualTest = await testApiKeyManually(apiKey);
-    if (!manualTest.success) {
-      setError(`API key validation failed: ${manualTest.error}`);
-      return;
-    }
-
     try {
       setError('');
       const service = new ElevenLabsService(apiKey);
       elevenLabsServiceRef.current = service;
 
       // Load agents
-      console.log('Loading agents...');
       const agentList = await service.getAgents();
-      console.log('Loaded agents:', agentList);
 
       setAgents(
         agentList.map((agent: Agent) => ({
@@ -79,7 +68,6 @@ export const ChatInterface: React.FC = () => {
 
       if (agentList.length > 0 && !selectedAgentId) {
         setSelectedAgentId(agentList[0].agentId);
-        console.log('Selected first agent:', agentList[0].agentId);
       }
     } catch (err) {
       setError('Failed to initialize service. Please check your API key.');
@@ -108,20 +96,8 @@ export const ChatInterface: React.FC = () => {
     try {
       setError('');
 
-      // Test the signed URL manually first
-      console.log('Testing signed URL with raw fetch...');
-      const signedUrlTest = await testSignedUrlManually(
-        apiKey,
-        selectedAgentId
-      );
-      if (!signedUrlTest.success) {
-        setError(`Signed URL test failed: ${signedUrlTest.error}`);
-        return;
-      }
-
       await elevenLabsServiceRef.current.connectToAgent(selectedAgentId, {
         onMessage: (message: string) => {
-          console.log('💬 ChatInterface: Received message callback:', message);
           const newMessage: Message = {
             id: Date.now().toString(),
             text: message,
@@ -129,56 +105,31 @@ export const ChatInterface: React.FC = () => {
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, newMessage]);
-          console.log('✅ ChatInterface: Message added to UI');
         },
         onAudio: async (audioData: ArrayBuffer) => {
-          console.log(
-            '🔊 ChatInterface: Received audio callback, buffer size:',
-            audioData.byteLength
-          );
           try {
             await audioManager.playAudio(audioData);
-            console.log('✅ ChatInterface: Audio played successfully');
           } catch (err) {
-            console.error('❌ ChatInterface: Failed to play audio:', err);
+            console.error('ChatInterface: Failed to play audio:', err);
           }
         },
-        onError: (error: Error) => {
-          console.error('❌ ChatInterface: Connection error:', error);
-          setError(`Connection error: ${error.message}`);
+        onError: () => {
           setIsConnected(false);
         },
         onConnectionStateChange: (state) => {
-          console.log('🔄 ChatInterface: Connection state changed to:', state);
           setConnectionState(state);
           setIsConnected(state === 'connected');
 
           // Only set up audio chunk handler when connected
           if (state === 'connected') {
-            console.log('🔗 ChatInterface: Setting up audio chunk handler');
-
             // Set up the audio chunk handler
             const chunkHandler = (chunk: ArrayBuffer) => {
-              console.log(
-                `🎤 ChatInterface: Audio chunk received, size: ${chunk.byteLength} bytes`
-              );
               try {
                 if (!elevenLabsServiceRef.current?.isConnected()) {
-                  console.warn(
-                    '⚠️ ChatInterface: Service not connected, cannot send audio chunk'
-                  );
                   return;
                 }
-
-                console.log(
-                  '📤 ChatInterface: Sending audio chunk to ElevenLabs...'
-                );
                 elevenLabsServiceRef.current?.sendAudioChunk(chunk);
               } catch (error) {
-                console.error(
-                  '❌ ChatInterface: Failed to send audio chunk:',
-                  error
-                );
                 setError(
                   `Failed to send audio: ${
                     error instanceof Error ? error.message : 'Unknown error'
@@ -188,12 +139,8 @@ export const ChatInterface: React.FC = () => {
             };
 
             audioManager.onAudioChunk = chunkHandler;
-            console.log(
-              '✅ ChatInterface: Audio chunk handler set up successfully'
-            );
           } else {
             // Clear audio handler when disconnected
-            console.log('🔗 ChatInterface: Clearing audio chunk handler');
             audioManager.onAudioChunk = undefined;
           }
         },
@@ -206,11 +153,8 @@ export const ChatInterface: React.FC = () => {
 
   const sendMessage = async () => {
     if (!inputText.trim() || !elevenLabsServiceRef.current?.isConnected()) {
-      console.warn('⚠️ Cannot send message: empty text or not connected');
       return;
     }
-
-    console.log('📤 ChatInterface: Preparing to send message:', inputText);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -220,13 +164,10 @@ export const ChatInterface: React.FC = () => {
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    console.log('✅ ChatInterface: User message added to UI');
 
     try {
-      console.log('📤 ChatInterface: Calling sendTextMessage...');
       await elevenLabsServiceRef.current.sendTextMessage(inputText);
       setInputText('');
-      console.log('✅ ChatInterface: Message sent successfully, input cleared');
     } catch (err) {
       console.error('❌ ChatInterface: Failed to send message:', err);
       setError('Failed to send message');
@@ -258,20 +199,11 @@ export const ChatInterface: React.FC = () => {
 
     try {
       if (audioManager.isRecording) {
-        console.log('🎤 ChatInterface: Stopping recording...');
         audioManager.stopRecording();
       } else {
-        console.log('🎤 ChatInterface: Starting recording...');
-
         // Verify that the audio chunk handler is set up
         if (!audioManager.onAudioChunk) {
-          console.warn(
-            '⚠️ ChatInterface: Audio chunk handler not set up! Setting it up now...'
-          );
           audioManager.onAudioChunk = (chunk: ArrayBuffer) => {
-            console.log(
-              `🎤 ChatInterface: Late-setup audio chunk received, size: ${chunk.byteLength} bytes`
-            );
             try {
               elevenLabsServiceRef.current?.sendAudioChunk(chunk);
             } catch (error) {
@@ -281,73 +213,17 @@ export const ChatInterface: React.FC = () => {
               );
             }
           };
-        } else {
-          console.log('✅ ChatInterface: Audio chunk handler is set up');
         }
 
         await audioManager.startRecording();
         // Clear any previous errors when recording starts successfully
         setError('');
-        console.log('✅ ChatInterface: Recording started successfully');
       }
     } catch (err) {
       const errorMessage =
         'Failed to access microphone. Please check permissions.';
       setError(errorMessage);
       console.error('❌ ChatInterface: Microphone error:', err);
-    }
-  };
-
-  const testMicrophoneAccess = async () => {
-    try {
-      console.log('🧪 ChatInterface: Starting microphone test...');
-      await testMicrophone();
-    } catch (err) {
-      console.error('❌ ChatInterface: Microphone test failed:', err);
-      setError('Microphone test failed. Please check your microphone.');
-    }
-  };
-
-  const testAudioSystem = async () => {
-    if (!isConnected) {
-      setError('Please connect to an agent first');
-      return;
-    }
-
-    try {
-      console.log('🧪 ChatInterface: Testing audio system...');
-
-      // First test: Send a text message to ensure basic communication works
-      const testMessage = 'Hello, this is a test message. Can you hear me?';
-      console.log('📝 ChatInterface: Sending test text message:', testMessage);
-
-      await elevenLabsServiceRef.current?.sendTextMessage(testMessage);
-
-      // Clear any previous errors
-      setError('');
-
-      const testMsg: Message = {
-        id: Date.now().toString(),
-        text: `[Test] ${testMessage}`,
-        sender: 'user',
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, testMsg]);
-      console.log('✅ ChatInterface: Test message sent successfully');
-
-      // Second test: Verify audio chunk handler is set up
-      if (audioManager.onAudioChunk) {
-        console.log('✅ ChatInterface: Audio chunk handler is properly set up');
-      } else {
-        console.warn('⚠️ ChatInterface: Audio chunk handler is NOT set up!');
-      }
-    } catch (err) {
-      const errorMessage = `Test failed: ${
-        err instanceof Error ? err.message : 'Unknown error'
-      }`;
-      setError(errorMessage);
-      console.error('❌ ChatInterface: Test error:', err);
     }
   };
 
@@ -437,7 +313,7 @@ export const ChatInterface: React.FC = () => {
       </div>
 
       <div className="chat-input-container">
-        <div className="audio-controls">
+        <div>
           <button
             onClick={toggleRecording}
             className={`audio-button ${
@@ -450,32 +326,6 @@ export const ChatInterface: React.FC = () => {
           >
             🎤
           </button>
-
-          <button
-            onClick={testAudioSystem}
-            className="test-button"
-            disabled={!isConnected}
-            title="Test Audio System"
-          >
-            🧪 Test
-          </button>
-
-          <button
-            onClick={testMicrophoneAccess}
-            className="test-button"
-            title="Test Microphone"
-          >
-            🎤 Mic Test
-          </button>
-
-          <button
-            onClick={() => runMinimalTest()}
-            className="test-button"
-            title="Run Minimal ElevenLabs Test"
-          >
-            🔬 Minimal Test
-          </button>
-
           {audioManager.isPlaying && (
             <>
               <div className="audio-playing">🔊 Playing...</div>

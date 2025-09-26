@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { currentAudioSettings } from '../config/audioConfig';
 
 export interface AudioManager {
   isRecording: boolean;
@@ -51,20 +50,12 @@ export const useAudioManager = (): AudioManager => {
 
   const startRecording = useCallback(async () => {
     try {
-      console.log('🎤 Starting audio recording...');
-
       // Request audio settings - use global audio configuration
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: currentAudioSettings.recording.channelCount,
-          echoCancellation: currentAudioSettings.recording.echoCancellation,
-          noiseSuppression: currentAudioSettings.recording.noiseSuppression,
-          autoGainControl: currentAudioSettings.recording.autoGainControl,
-        },
+        audio: true,
       });
 
       streamRef.current = stream;
-      console.log('✅ Got media stream');
 
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext ||
@@ -76,60 +67,31 @@ export const useAudioManager = (): AudioManager => {
 
       // Resume AudioContext if suspended
       if (audioContext.state === 'suspended') {
-        console.log('🔊 Resuming suspended AudioContext');
         await audioContext.resume();
       }
 
-      console.log('🔍 AudioContext sample rate:', audioContext.sampleRate);
-      console.log(
-        '🔍 Stream settings:',
-        stream.getAudioTracks()[0].getSettings()
-      );
-
-      console.log('🎤 Setting up audio processing with ScriptProcessor');
-
       // Use ScriptProcessor with configurable buffer size
       const source = audioContext.createMediaStreamSource(stream);
-      const processor = audioContext.createScriptProcessor(
-        currentAudioSettings.recording.bufferSize,
-        1,
-        1
-      ); // Buffer size from config
+      const processor = audioContext.createScriptProcessor(4096, 1, 1); // Buffer size from config
 
       processor.onaudioprocess = (event) => {
         if (!isRecordingRef.current) {
-          console.log('🔇 Audio processing stopped (not recording)');
           return;
         }
 
         if (!onAudioChunkRef.current) {
-          console.log('🔇 No audio chunk handler available');
           return;
         }
 
         // Rate limiting: Use configurable chunk interval
         const now = Date.now();
-        if (
-          now - lastAudioSentRef.current <
-          currentAudioSettings.recording.chunkInterval
-        ) {
+        if (now - lastAudioSentRef.current < 100) {
           return; // Skip this chunk
         }
 
         const inputBuffer = event.inputBuffer;
         const inputData = inputBuffer.getChannelData(0);
-        const sampleRate =
-          audioContextRef.current?.sampleRate ||
-          currentAudioSettings.recording.sampleRate;
-
-        if (currentAudioSettings.debug.logAudioDetails) {
-          console.log(
-            '🔍 Processing audio chunk - Sample rate:',
-            sampleRate,
-            'Buffer size:',
-            inputData.length
-          );
-        }
+        const sampleRate = audioContextRef.current?.sampleRate || 44100;
 
         // Check if there's actual audio data (not just silence) using configurable threshold
         let hasAudio = false;
@@ -137,43 +99,21 @@ export const useAudioManager = (): AudioManager => {
         for (let i = 0; i < inputData.length; i++) {
           const amplitude = Math.abs(inputData[i]);
           maxAmplitude = Math.max(maxAmplitude, amplitude);
-          if (amplitude > currentAudioSettings.recording.silenceThreshold) {
+          if (amplitude > 0.01) {
             hasAudio = true;
           }
         }
 
         // Skip silent chunks to avoid sending unnecessary data
         if (!hasAudio) {
-          if (currentAudioSettings.debug.logChunks) {
-            console.log(
-              '🔇 Skipping silent audio chunk (max amplitude:',
-              maxAmplitude.toFixed(4),
-              ')'
-            );
-          }
           return;
         }
 
-        if (currentAudioSettings.debug.logChunks) {
-          console.log(
-            '🎤 Processing audio chunk with speech (max amplitude:',
-            maxAmplitude.toFixed(4),
-            ')'
-          );
-        }
-
         // Always resample to configured target rate for ElevenLabs compatibility
-        const targetSampleRate =
-          currentAudioSettings.elevenLabs.inputSampleRate;
+        const targetSampleRate = 16000;
         const resampleRatio = targetSampleRate / sampleRate;
         const outputLength = Math.floor(inputData.length * resampleRatio);
         const resampledData = new Float32Array(outputLength);
-
-        if (currentAudioSettings.debug.logAudioDetails) {
-          console.log(
-            `🔄 Resampling from ${sampleRate}Hz to ${targetSampleRate}Hz (${inputData.length} -> ${outputLength} samples)`
-          );
-        }
 
         // High-quality resampling with linear interpolation
         for (let i = 0; i < outputLength; i++) {
@@ -202,10 +142,6 @@ export const useAudioManager = (): AudioManager => {
           dataView.setInt16(i * 2, value, true); // true = little-endian
         }
 
-        console.log(
-          `🎤 Sending audio chunk: ${arrayBuffer.byteLength} bytes (${resampledData.length} samples at ${targetSampleRate}Hz)`
-        );
-
         lastAudioSentRef.current = now;
         onAudioChunkRef.current(arrayBuffer);
       };
@@ -217,11 +153,7 @@ export const useAudioManager = (): AudioManager => {
       mediaRecorderRef.current = processor as unknown as MediaRecorder;
 
       setIsRecording(true);
-      console.log(
-        `✅ Started PCM audio recording at ${currentAudioSettings.elevenLabs.inputSampleRate}Hz with ScriptProcessor`
-      );
-    } catch (error) {
-      console.error('❌ Failed to start recording:', error);
+    } catch {
       throw new Error('Failed to access microphone');
     }
   }, []);
@@ -233,9 +165,7 @@ export const useAudioManager = (): AudioManager => {
         const processor = mediaRecorderRef.current as unknown as AudioNode;
         processor.disconnect();
         mediaRecorderRef.current = null;
-        console.log('✅ Disconnected audio processor');
-      } catch (error) {
-        console.warn('Error disconnecting audio processor:', error);
+      } catch {
         mediaRecorderRef.current = null;
       }
     }
@@ -243,24 +173,16 @@ export const useAudioManager = (): AudioManager => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
-      console.log('✅ Stopped media stream');
     }
 
     setIsRecording(false);
-    console.log('✅ Stopped PCM audio recording');
   }, []);
 
   const playAudio = useCallback(async (audioData: ArrayBuffer) => {
-    console.log(
-      '🔊 Received audio data for playback, size:',
-      audioData.byteLength
-    );
-
     try {
       setIsPlaying(true);
 
       if (!audioContextRef.current) {
-        console.log('🔊 Creating new AudioContext');
         audioContextRef.current = new (window.AudioContext ||
           (window as unknown as { webkitAudioContext: typeof AudioContext })
             .webkitAudioContext)();
@@ -268,7 +190,6 @@ export const useAudioManager = (): AudioManager => {
 
       // Resume AudioContext if suspended (common after user interaction requirements)
       if (audioContextRef.current.state === 'suspended') {
-        console.log('🔊 Resuming suspended AudioContext');
         await audioContextRef.current.resume();
       }
 
@@ -279,15 +200,7 @@ export const useAudioManager = (): AudioManager => {
       const numberOfSamples = audioData.byteLength / bytesPerSample;
 
       // Use ElevenLabs output sample rate from config
-      const sampleRate = currentAudioSettings.elevenLabs.outputSampleRate;
-
-      if (currentAudioSettings.debug.logAudioDetails) {
-        console.log(
-          `🔊 Audio: ${numberOfSamples} samples → using ${sampleRate}Hz (duration: ${(
-            numberOfSamples / sampleRate
-          ).toFixed(2)}s)`
-        );
-      }
+      const sampleRate = 24000;
 
       const audioBuffer = audioContext.createBuffer(
         numberOfChannels,
@@ -309,13 +222,11 @@ export const useAudioManager = (): AudioManager => {
       source.buffer = audioBuffer;
 
       // Apply playback speed control if enabled
-      if (currentAudioSettings.playback.enableSpeedControl) {
-        source.playbackRate.value = currentAudioSettings.playback.playbackSpeed;
-      }
+      source.playbackRate.value = 1.0;
 
       // Create gain node for volume control
       const gainNode = audioContext.createGain();
-      gainNode.gain.value = currentAudioSettings.playback.volume;
+      gainNode.gain.value = 1.0;
 
       // Connect: source -> gain -> destination
       source.connect(gainNode);
@@ -324,27 +235,12 @@ export const useAudioManager = (): AudioManager => {
       currentAudioRef.current = source;
 
       source.onended = () => {
-        console.log('✅ Audio playback completed');
         setIsPlaying(false);
         currentAudioRef.current = null;
       };
 
       source.start(0);
-
-      const actualDuration =
-        audioBuffer.duration /
-        (currentAudioSettings.playback.enableSpeedControl
-          ? currentAudioSettings.playback.playbackSpeed
-          : 1);
-      console.log(
-        `✅ Started audio playback: ${actualDuration.toFixed(2)}s (${
-          currentAudioSettings.playback.playbackSpeed
-        }x speed, ${(currentAudioSettings.playback.volume * 100).toFixed(
-          0
-        )}% volume)`
-      );
-    } catch (error) {
-      console.error('❌ Failed to play audio:', error);
+    } catch {
       setIsPlaying(false);
       currentAudioRef.current = null;
     }
@@ -356,14 +252,12 @@ export const useAudioManager = (): AudioManager => {
       currentHtmlAudioRef.current.pause();
       currentHtmlAudioRef.current.currentTime = 0;
       currentHtmlAudioRef.current = null;
-      console.log('Stopped HTML5 audio');
     }
 
     // Stop Web Audio API source if playing
     if (currentAudioRef.current) {
       currentAudioRef.current.stop();
       currentAudioRef.current = null;
-      console.log('Stopped Web Audio API source');
     }
 
     setIsPlaying(false);
