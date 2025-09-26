@@ -1,12 +1,27 @@
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 
+interface RawAgentData {
+  agent_id?: string;
+  agentId?: string;
+  id?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+interface AgentsResponse {
+  agents?: RawAgentData[];
+  [key: string]: unknown;
+}
+
 export class ElevenLabsService {
   private client: ElevenLabsClient;
   private ws: WebSocket | null = null;
   private onMessage?: (message: string) => void;
   private onAudio?: (audioData: ArrayBuffer) => void;
   private onError?: (error: Error) => void;
-  private onConnectionStateChange?: (state: 'connecting' | 'connected' | 'disconnected') => void;
+  private onConnectionStateChange?: (
+    state: 'connecting' | 'connected' | 'disconnected'
+  ) => void;
   private conversationId?: string;
   private apiKey: string;
   private conversationMode: 'text' | 'audio' | null = null;
@@ -19,12 +34,63 @@ export class ElevenLabsService {
     this.client = new ElevenLabsClient({ apiKey });
   }
 
-  async connectToAgent(agentId: string, callbacks: {
-    onMessage?: (message: string) => void;
-    onAudio?: (audioData: ArrayBuffer) => void;
-    onError?: (error: Error) => void;
-    onConnectionStateChange?: (state: 'connecting' | 'connected' | 'disconnected') => void;
-  }): Promise<void> {
+  async getAgents(): Promise<
+    Array<{ agentId: string; name: string; [key: string]: unknown }>
+  > {
+    try {
+      const response = await fetch(
+        'https://api.elevenlabs.io/v1/convai/agents',
+        {
+          method: 'GET',
+          headers: {
+            'xi-api-key': this.apiKey,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to fetch agents: HTTP ${response.status}: ${errorText}`
+        );
+      }
+
+      const data = await response.json();
+
+      // Ensure the response is an array and map it to the expected format
+      if (Array.isArray(data)) {
+        return data.map((agent: RawAgentData) => ({
+          agentId: agent.agent_id || agent.agentId || agent.id || 'unknown',
+          name: agent.name || 'Unnamed Agent',
+          ...agent,
+        }));
+      } else if (data.agents && Array.isArray(data.agents)) {
+        return (data as AgentsResponse).agents!.map((agent: RawAgentData) => ({
+          agentId: agent.agent_id || agent.agentId || agent.id || 'unknown',
+          name: agent.name || 'Unnamed Agent',
+          ...agent,
+        }));
+      } else {
+        throw new Error('Unexpected response format: agents data not found');
+      }
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+      throw error;
+    }
+  }
+
+  async connectToAgent(
+    agentId: string,
+    callbacks: {
+      onMessage?: (message: string) => void;
+      onAudio?: (audioData: ArrayBuffer) => void;
+      onError?: (error: Error) => void;
+      onConnectionStateChange?: (
+        state: 'connecting' | 'connected' | 'disconnected'
+      ) => void;
+    }
+  ): Promise<void> {
     this.onMessage = callbacks.onMessage;
     this.onAudio = callbacks.onAudio;
     this.onError = callbacks.onError;
@@ -32,7 +98,10 @@ export class ElevenLabsService {
 
     try {
       this.onConnectionStateChange?.('connecting');
-      const response = await this.client.conversationalAi.conversations.getSignedUrl({ agentId });
+      const response =
+        await this.client.conversationalAi.conversations.getSignedUrl({
+          agentId,
+        });
       this.ws = new WebSocket(response.signedUrl + '&source=js_sdk');
 
       this.ws.onopen = () => {
@@ -74,23 +143,43 @@ export class ElevenLabsService {
 
     switch (message.type) {
       case 'conversation_initiation_metadata': {
-        const event = message.conversation_initiation_metadata_event as { conversation_id: string };
+        const event = message.conversation_initiation_metadata_event as {
+          conversation_id: string;
+        };
         this.conversationId = event.conversation_id;
         console.log('Conversation started:', this.conversationId);
+        break;
+      }
+      case 'agent_response': {
+        const event = message.agent_response_event as {
+          agent_response?: string;
+          response?: string;
+        };
+        const responseText = event.agent_response || event.response;
+        if (responseText && this.onMessage) {
+          console.log('Processing agent response:', responseText);
+          this.onMessage(responseText);
+        }
         break;
       }
       case 'llm_response': {
         const event = message.llm_response_event as { response?: string };
         if (event.response && this.onMessage) {
+          console.log('Processing LLM response:', event.response);
           this.onMessage(event.response);
         }
         break;
       }
       case 'audio': {
-        const event = message.audio_event as { audio?: string };
-        if (event.audio && this.onAudio) {
+        const event = message.audio_event as {
+          audio?: string;
+          audio_base_64?: string;
+        };
+        const audioData = event.audio || event.audio_base_64;
+        if (audioData && this.onAudio) {
           try {
-            const audioBuffer = this.base64ToArrayBuffer(event.audio);
+            console.log('Processing audio data, length:', audioData.length);
+            const audioBuffer = this.base64ToArrayBuffer(audioData);
             this.onAudio(audioBuffer);
           } catch (error) {
             console.error('Error processing audio:', error);
@@ -98,6 +187,13 @@ export class ElevenLabsService {
         }
         break;
       }
+      case 'ping': {
+        // Handle WebSocket ping messages (keepalive)
+        // These are normal and don't need processing
+        break;
+      }
+      default:
+        console.log('Unhandled message type:', message.type);
     }
   }
 
@@ -108,17 +204,21 @@ export class ElevenLabsService {
 
     if (!this.conversationId) {
       if (this.conversationMode === 'audio') {
-        throw new Error('Cannot send text in audio mode - disconnect and reconnect');
+        throw new Error(
+          'Cannot send text in audio mode - disconnect and reconnect'
+        );
       }
       console.log('Starting TEXT conversation');
       this.conversationMode = 'text';
-      this.ws.send(JSON.stringify({
-        type: 'conversation_initiation_client_data',
-        custom_llm_extra_body: {},
-        conversation_config_override: {},
-        dynamic_variables: {},
-      }));
-      await new Promise(resolve => setTimeout(resolve, 100));
+      this.ws.send(
+        JSON.stringify({
+          type: 'conversation_initiation_client_data',
+          custom_llm_extra_body: {},
+          conversation_config_override: {},
+          dynamic_variables: {},
+        })
+      );
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     this.ws.send(JSON.stringify({ type: 'message', message }));
@@ -131,24 +231,30 @@ export class ElevenLabsService {
 
     if (!this.conversationId) {
       if (this.conversationMode === 'text') {
-        throw new Error('Cannot send audio in text mode - disconnect and reconnect');
+        throw new Error(
+          'Cannot send audio in text mode - disconnect and reconnect'
+        );
       }
       console.log('Starting AUDIO conversation');
       this.conversationMode = 'audio';
-      this.ws.send(JSON.stringify({
-        type: 'conversation_initiation_client_data',
-        custom_llm_extra_body: {},
-        conversation_config_override: {},
-        dynamic_variables: {},
-      }));
-      await new Promise(resolve => setTimeout(resolve, 200));
+      this.ws.send(
+        JSON.stringify({
+          type: 'conversation_initiation_client_data',
+          custom_llm_extra_body: {},
+          conversation_config_override: {},
+          dynamic_variables: {},
+        })
+      );
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
     const base64Audio = this.arrayBufferToBase64(audioData);
-    this.ws.send(JSON.stringify({
-      type: 'audio',
-      audio_event: { audio: base64Audio },
-    }));
+    this.ws.send(
+      JSON.stringify({
+        type: 'audio',
+        audio_event: { audio: base64Audio },
+      })
+    );
   }
 
   disconnect(): void {
@@ -162,6 +268,10 @@ export class ElevenLabsService {
 
   isConnected(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
+
+  getConversationId(): string | undefined {
+    return this.conversationId;
   }
 
   private arrayBufferToBase64(buffer: ArrayBuffer): string {

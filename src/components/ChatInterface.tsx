@@ -63,9 +63,12 @@ export const ChatInterface: React.FC = () => {
       elevenLabsServiceRef.current = service;
 
       // Load agents
+      console.log('Loading agents...');
       const agentList = await service.getAgents();
+      console.log('Loaded agents:', agentList);
+
       setAgents(
-        agentList.map((agent) => ({
+        agentList.map((agent: Agent) => ({
           ...agent,
           agentId: agent.agentId,
           name: agent.name || 'Unnamed Agent',
@@ -74,6 +77,7 @@ export const ChatInterface: React.FC = () => {
 
       if (agentList.length > 0 && !selectedAgentId) {
         setSelectedAgentId(agentList[0].agentId);
+        console.log('Selected first agent:', agentList[0].agentId);
       }
     } catch (err) {
       setError('Failed to initialize service. Please check your API key.');
@@ -115,6 +119,7 @@ export const ChatInterface: React.FC = () => {
 
       await elevenLabsServiceRef.current.connectToAgent(selectedAgentId, {
         onMessage: (message: string) => {
+          console.log('ChatInterface: Received message callback:', message);
           const newMessage: Message = {
             id: Date.now().toString(),
             text: message,
@@ -124,6 +129,10 @@ export const ChatInterface: React.FC = () => {
           setMessages((prev) => [...prev, newMessage]);
         },
         onAudio: async (audioData: ArrayBuffer) => {
+          console.log(
+            'ChatInterface: Received audio callback, buffer size:',
+            audioData.byteLength
+          );
           try {
             await audioManager.playAudio(audioData);
           } catch (err) {

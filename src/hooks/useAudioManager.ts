@@ -128,44 +128,57 @@ export const useAudioManager = (): AudioManager => {
   }, []);
 
   const playAudio = useCallback(async (audioData: ArrayBuffer) => {
-    console.log('🔊 Attempting to play audio, size:', audioData.byteLength);
+    console.log('🔊 Playing raw audio data, size:', audioData.byteLength);
 
     try {
       setIsPlaying(true);
 
-      // Create a simple blob and audio element
-      const blob = new Blob([audioData], { type: 'audio/mp3' });
-      const audioUrl = URL.createObjectURL(blob);
-      const audioElement = new Audio(audioUrl);
+      if (!audioContextRef.current) {
+        throw new Error('Audio context not available');
+      }
 
-      // Store reference for stopping
-      currentHtmlAudioRef.current = audioElement;
+      // Eleven Labs sends raw PCM audio data (16-bit, 22050 Hz, mono)
+      // Convert ArrayBuffer to AudioBuffer for raw PCM playback
+      const audioContext = audioContextRef.current;
+      const sampleRate = 22050; // Eleven Labs default sample rate
+      const numberOfChannels = 1; // Mono
+      const bytesPerSample = 2; // 16-bit = 2 bytes per sample
 
-      // Set up event handlers
-      audioElement.onended = () => {
+      const numberOfSamples = audioData.byteLength / bytesPerSample;
+      const audioBuffer = audioContext.createBuffer(
+        numberOfChannels,
+        numberOfSamples,
+        sampleRate
+      );
+
+      // Convert raw bytes to Float32Array for Web Audio API
+      const int16Array = new Int16Array(audioData);
+      const float32Array = audioBuffer.getChannelData(0);
+
+      // Convert 16-bit integers to floating point values (-1.0 to 1.0)
+      for (let i = 0; i < int16Array.length; i++) {
+        float32Array[i] = int16Array[i] / 32768.0;
+      }
+
+      // Create and play the audio source
+      const source = audioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContext.destination);
+
+      currentAudioRef.current = source;
+
+      source.onended = () => {
         console.log('✅ Audio playback completed');
         setIsPlaying(false);
-        currentHtmlAudioRef.current = null;
-        URL.revokeObjectURL(audioUrl);
+        currentAudioRef.current = null;
       };
 
-      audioElement.onerror = (e) => {
-        console.error('❌ Audio playback failed:', e);
-        console.error('Audio error details:', audioElement.error);
-        setIsPlaying(false);
-        currentHtmlAudioRef.current = null;
-        URL.revokeObjectURL(audioUrl);
-      };
-
-      // Play the audio
-      console.log('▶️ Starting audio playback...');
-      await audioElement.play();
-      console.log('✅ Audio play() succeeded');
-
+      source.start(0);
+      console.log('✅ Raw PCM audio playback started');
     } catch (error) {
-      console.error('❌ Failed to play audio:', error);
+      console.error('❌ Failed to play raw audio:', error);
       setIsPlaying(false);
-      currentHtmlAudioRef.current = null;
+      currentAudioRef.current = null;
     }
   }, []);
 
