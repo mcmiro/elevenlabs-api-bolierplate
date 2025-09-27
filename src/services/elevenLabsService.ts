@@ -1,17 +1,20 @@
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
-
-interface RawAgentData {
-  agent_id?: string;
-  agentId?: string;
-  id?: string;
-  name?: string;
-  [key: string]: unknown;
-}
-
-interface AgentsResponse {
-  agents?: RawAgentData[];
-  [key: string]: unknown;
-}
+import type {
+  Agent,
+  AgentResponseCorrectionEvent,
+  AgentResponseEvent,
+  AgentsResponse,
+  AudioEvent,
+  ConnectionState,
+  ConversationInitiationEvent,
+  ConversationMode,
+  LLMResponseEvent,
+  PingEvent,
+  RawAgentData,
+  ServiceCallbacks,
+  UserTranscriptEvent,
+  WebSocketMessage,
+} from '../models';
 
 export class ElevenLabsService {
   private client: ElevenLabsClient;
@@ -19,12 +22,10 @@ export class ElevenLabsService {
   private onMessage?: (message: string) => void;
   private onAudio?: (audioData: ArrayBuffer) => void;
   private onError?: (error: Error) => void;
-  private onConnectionStateChange?: (
-    state: 'connecting' | 'connected' | 'disconnected'
-  ) => void;
+  private onConnectionStateChange?: (state: ConnectionState) => void;
   private conversationId?: string;
   private apiKey: string;
-  private conversationMode: 'text' | 'audio' | null = null;
+  private conversationMode: ConversationMode = null;
   private heartbeatInterval?: number;
   private lastPingTime: number = 0;
   private connectionTimeout?: number;
@@ -39,9 +40,7 @@ export class ElevenLabsService {
     this.client = new ElevenLabsClient({ apiKey });
   }
 
-  async getAgents(): Promise<
-    Array<{ agentId: string; name: string; [key: string]: unknown }>
-  > {
+  async getAgents(): Promise<Agent[]> {
     try {
       const apiBaseUrl = import.meta.env.VITE_ELEVEN_LABS_API_BASE_URL;
       const response = await fetch(`${apiBaseUrl}convai/agents`, {
@@ -85,14 +84,7 @@ export class ElevenLabsService {
 
   async connectToAgent(
     agentId: string,
-    callbacks: {
-      onMessage?: (message: string) => void;
-      onAudio?: (audioData: ArrayBuffer) => void;
-      onError?: (error: Error) => void;
-      onConnectionStateChange?: (
-        state: 'connecting' | 'connected' | 'disconnected'
-      ) => void;
-    }
+    callbacks: ServiceCallbacks
   ): Promise<void> {
     this.onMessage = callbacks.onMessage;
     this.onAudio = callbacks.onAudio;
@@ -162,21 +154,17 @@ export class ElevenLabsService {
     }
   }
 
-  private handleMessage(message: Record<string, unknown>): void {
+  private handleMessage(message: WebSocketMessage): void {
     switch (message.type) {
       case 'conversation_initiation_metadata': {
-        const event = message.conversation_initiation_metadata_event as {
-          conversation_id: string;
-        };
+        const event =
+          message.conversation_initiation_metadata_event as ConversationInitiationEvent;
         this.conversationId = event.conversation_id;
         this.conversationInitiated = true;
         break;
       }
       case 'agent_response': {
-        const event = message.agent_response_event as {
-          agent_response?: string;
-          response?: string;
-        };
+        const event = message.agent_response_event as AgentResponseEvent;
         const responseText = event.agent_response || event.response;
         if (responseText && this.onMessage) {
           this.onMessage(responseText);
@@ -184,18 +172,14 @@ export class ElevenLabsService {
         break;
       }
       case 'llm_response': {
-        const event = message.llm_response_event as { response?: string };
+        const event = message.llm_response_event as LLMResponseEvent;
         if (event.response && this.onMessage) {
           this.onMessage(event.response);
         }
         break;
       }
       case 'audio': {
-        const event = message.audio_event as {
-          audio?: string;
-          audio_base_64?: string;
-          event_id?: string;
-        };
+        const event = message.audio_event as AudioEvent;
 
         const audioData = event?.audio_base_64 || event?.audio;
         if (audioData && this.onAudio) {
@@ -221,7 +205,7 @@ export class ElevenLabsService {
       }
       case 'ping': {
         // Handle WebSocket ping messages (keepalive) - respond with pong
-        const event = message.ping_event as { event_id?: string };
+        const event = message.ping_event as PingEvent;
         const eventId = event?.event_id;
 
         this.lastPingTime = Date.now(); // Update last ping time when we receive a ping
@@ -241,9 +225,7 @@ export class ElevenLabsService {
       }
       case 'user_transcript': {
         // Handle user speech recognition feedback (official SDK pattern)
-        const event = message.user_transcript_event as {
-          user_transcript?: string;
-        };
+        const event = message.user_transcript_event as UserTranscriptEvent;
         if (event?.user_transcript && this.onMessage) {
           const transcript = event.user_transcript.trim();
           if (transcript) {
@@ -255,10 +237,8 @@ export class ElevenLabsService {
       }
       case 'agent_response_correction': {
         // Handle agent response corrections (official SDK pattern)
-        const event = message.agent_response_correction_event as {
-          original?: string;
-          corrected?: string;
-        };
+        const event =
+          message.agent_response_correction_event as AgentResponseCorrectionEvent;
         if (event?.corrected && this.onMessage) {
           this.onMessage(event.corrected);
         }
@@ -335,6 +315,10 @@ export class ElevenLabsService {
 
   getConversationId(): string | undefined {
     return this.conversationId;
+  }
+
+  getLastPingTime(): number {
+    return this.lastPingTime;
   }
 
   private startHeartbeat(): void {

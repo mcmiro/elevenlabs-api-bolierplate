@@ -1,28 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioManager } from '../hooks/useAudioManager';
+import type { Agent, ConnectionState, Message } from '../models';
 import { ElevenLabsService } from '../services/elevenLabsService';
 import './ChatInterface.css';
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'agent';
-  timestamp: Date;
-}
-
-interface Agent {
-  agentId: string;
-  name: string;
-  [key: string]: unknown;
-}
 
 export const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionState, setConnectionState] = useState<
-    'connecting' | 'connected' | 'disconnected'
-  >('disconnected');
+  const [connectionState, setConnectionState] =
+    useState<ConnectionState>('disconnected');
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [error, setError] = useState<string>('');

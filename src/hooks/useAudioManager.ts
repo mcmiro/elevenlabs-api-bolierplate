@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { AudioManager } from '../models';
 
-export interface AudioManager {
-  isRecording: boolean;
-  isPlaying: boolean;
-  startRecording: () => Promise<void>;
-  stopRecording: () => void;
-  playAudio: (audioData: ArrayBuffer) => Promise<void>;
-  stopAudio: () => void;
-  onAudioChunk?: (chunk: ArrayBuffer) => void;
-}
+export { type AudioManager } from '../models';
 
 export const useAudioManager = (): AudioManager => {
   const [isRecording, setIsRecording] = useState(false);
