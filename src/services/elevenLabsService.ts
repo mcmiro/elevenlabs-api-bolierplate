@@ -253,8 +253,27 @@ export class ElevenLabsService {
       throw new Error('WebSocket not connected');
     }
 
-    const textMessage = { type: 'message', message };
-    this.ws.send(JSON.stringify(textMessage));
+    // Wait for conversation initiation to complete
+    if (!this.conversationInitiated || !this.conversationId) {
+      throw new Error('Conversation not initialized');
+    }
+
+    // Set conversation mode to text when sending text message
+    if (this.conversationMode !== 'text') {
+      this.conversationMode = 'text';
+    }
+
+    // Use the correct format for ElevenLabs text messages (following official SDK pattern)
+    const textMessage = {
+      type: 'user_message',
+      text: message,
+    };
+
+    try {
+      this.ws.send(JSON.stringify(textMessage));
+    } catch (error) {
+      throw new Error('Failed to send text message', error as Error);
+    }
   }
 
   async sendAudioChunk(audioData: ArrayBuffer): Promise<void> {
