@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioManager } from '../hooks/useAudioManager';
-import type { Agent, ConnectionState, Message } from '../models';
+import type { ConnectionState, Message } from '../models';
 import { ElevenLabsService } from '../services/elevenLabsService';
 import './ChatInterface.css';
 
@@ -10,9 +10,11 @@ export const ChatInterface: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionState, setConnectionState] =
     useState<ConnectionState>('disconnected');
-  const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [error, setError] = useState<string>('');
+
+  // New state for the multi-step flow
+  const [flowStep, setFlowStep] = useState<'intro' | 'terms' | 'chat'>('intro');
 
   const elevenLabsServiceRef = useRef<ElevenLabsService | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -44,14 +46,6 @@ export const ChatInterface: React.FC = () => {
 
       // Load agents
       const agentList = await service.getAgents();
-
-      setAgents(
-        agentList.map((agent: Agent) => ({
-          ...agent,
-          agentId: agent.agentId,
-          name: agent.name || 'Unnamed Agent',
-        }))
-      );
 
       if (agentList.length > 0 && !selectedAgentId) {
         setSelectedAgentId(agentList[0].agentId);
@@ -107,17 +101,13 @@ export const ChatInterface: React.FC = () => {
           setConnectionState(state);
           setIsConnected(state === 'connected');
 
-          // Only set up audio chunk handler when connected
+          // Only set up audio chunk handler when connected, and auto-start recording
           if (state === 'connected') {
-            // Set up the audio chunk handler - continuous audio streaming
             const chunkHandler = (chunk: ArrayBuffer) => {
               try {
-                // Don't send audio if we're not connected
                 if (!elevenLabsServiceRef.current?.isConnected()) {
                   return;
                 }
-
-                // Send all audio continuously - let ElevenLabs handle turn-taking
                 elevenLabsServiceRef.current?.sendAudioChunk(chunk);
               } catch (error) {
                 setError(
@@ -129,6 +119,16 @@ export const ChatInterface: React.FC = () => {
             };
 
             audioManager.onAudioChunk = chunkHandler;
+            // Show connected message
+            const connectedMessage: Message = {
+              id: Date.now().toString(),
+              text: 'Connected',
+              sender: 'agent',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, connectedMessage]);
+
+            // Automatically start recording after connection
             audioManager
               .startRecording()
               .then(() => {
@@ -190,6 +190,8 @@ export const ChatInterface: React.FC = () => {
     setIsConnected(false);
     setConnectionState('disconnected');
     setMessages([]);
+    // Reset flow to intro screen
+    setFlowStep('intro');
   };
 
   const toggleRecording = async () => {
@@ -229,6 +231,20 @@ export const ChatInterface: React.FC = () => {
     }
   };
 
+  const handleLetDoIt = () => {
+    setFlowStep('terms');
+  };
+
+  const handleAcceptTerms = async () => {
+    setFlowStep('chat');
+    // Initialize the service and connect automatically
+    await connectToAgent();
+  };
+
+  const handleCancelTerms = () => {
+    setFlowStep('intro');
+  };
+
   if (!import.meta.env.VITE_ELEVEN_LABS_API_KEY) {
     return (
       <div className="chat-setup">
@@ -255,48 +271,61 @@ export const ChatInterface: React.FC = () => {
     );
   }
 
-  return (
-    <div className="chat-interface">
-      <div className="chat-header">
-        <div className="chat-title">
-          <h1>Eleven Labs Chat</h1>
-          <div className={`connection-status ${connectionState}`}>
-            {connectionState}
+  // First screen: Introduction
+  if (flowStep === 'intro') {
+    return (
+      <div className="flow-screen intro-screen">
+        <div className="flow-container">
+          <div className="intro-icon">📞</div>
+          <h2>Quick info call with TheSupply-Bot</h2>
+          <button onClick={handleLetDoIt} className="flow-button primary">
+            📞 Lets do it
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Second screen: Terms and Conditions
+  if (flowStep === 'terms') {
+    return (
+      <div className="flow-screen terms-screen">
+        <div className="flow-container">
+          <h2>Terms and conditions</h2>
+          <div className="terms-content">
+            <p>
+              By clicking "Agree," and each time I interact with this AI agent,
+              I consent to the recording, storage, and sharing of my
+              communications with third-party service providers, and as
+              described in the Privacy Policy. If you do not wish to have your
+              conversations recorded, please refrain from using this service.
+            </p>
+          </div>
+          <div className="terms-buttons">
+            <button
+              onClick={handleCancelTerms}
+              className="flow-button secondary"
+            >
+              Cancel
+            </button>
+            <button onClick={handleAcceptTerms} className="flow-button primary">
+              Accept
+            </button>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        <div className="agent-selector">
-          <label htmlFor="agent-select">Agent:</label>
-          <select
-            id="agent-select"
-            value={selectedAgentId}
-            onChange={(e) => setSelectedAgentId(e.target.value)}
-            disabled={isConnected}
-          >
-            {agents.length === 0 ? (
-              <option>Loading agents...</option>
-            ) : (
-              agents.map((agent) => (
-                <option key={agent.agentId} value={agent.agentId}>
-                  {agent.name}
-                </option>
-              ))
-            )}
-          </select>
-
-          {!isConnected ? (
-            <button
-              onClick={connectToAgent}
-              className="connect-button"
-              disabled={agents.length === 0}
-            >
-              Connect
-            </button>
-          ) : (
-            <button onClick={disconnect} className="disconnect-button">
-              Disconnect
-            </button>
-          )}
+  // Third screen: Chat interface with connected state
+  return (
+    <div className="chat-interface connected-state">
+      <div className="connected-header">
+        <div className="connection-indicator">
+          <div className={`status-dot ${connectionState}`}></div>
+          <span className="connection-text">
+            {connectionState === 'connected' ? 'Connected' : connectionState}
+          </span>
         </div>
       </div>
 
@@ -314,11 +343,34 @@ export const ChatInterface: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="chat-input-container">
-        <div>
+      <div className="conversation-controls">
+        <div className="voice-interface">
+          <div className="audio-visual">
+            <div
+              className={`audio-circle ${
+                audioManager.isRecording ? 'recording' : ''
+              } ${audioManager.isPlaying ? 'playing' : ''} ${
+                isConnected ? 'connected' : ''
+              }`}
+              onClick={isConnected ? disconnect : undefined}
+              style={{ cursor: isConnected ? 'pointer' : 'default' }}
+              title={isConnected ? 'Click to disconnect' : ''}
+            >
+              <div className="audio-waves">
+                <div className="wave"></div>
+                <div className="wave"></div>
+                <div className="wave"></div>
+              </div>
+              {isConnected && (
+                <div className="disconnect-overlay">
+                  <span className="disconnect-text">Disconnect</span>
+                </div>
+              )}
+            </div>
+          </div>
           <button
             onClick={toggleRecording}
-            className={`audio-button ${
+            className={`voice-button ${
               audioManager.isRecording ? 'recording' : ''
             }`}
             disabled={!isConnected}
@@ -328,37 +380,24 @@ export const ChatInterface: React.FC = () => {
           >
             🎤
           </button>
-          {audioManager.isPlaying && (
-            <>
-              <div className="audio-playing">🔊 Playing...</div>
-              <button
-                onClick={() => audioManager.stopAudio()}
-                className="audio-stop-button"
-                title="Stop Audio"
-              >
-                ⏹️
-              </button>
-            </>
-          )}
-        </div>
-
-        <div className="text-input-container">
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-            disabled={!isConnected}
-            className="message-input"
-            rows={1}
-          />
-          <button
-            onClick={sendMessage}
-            disabled={!isConnected || !inputText.trim()}
-            className="send-button"
-          >
-            Send
-          </button>
+          <div className="text-input-container">
+            <textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Send a message"
+              disabled={!isConnected}
+              className="message-input"
+              rows={1}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={!isConnected || !inputText.trim()}
+              className="send-button"
+            >
+              Send
+            </button>
+          </div>
         </div>
       </div>
     </div>
