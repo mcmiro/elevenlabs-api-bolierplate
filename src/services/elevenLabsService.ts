@@ -12,6 +12,7 @@ import type {
   PingEvent,
   RawAgentData,
   ServiceCallbacks,
+  UserTranscriptEvent,
   WebSocketMessage,
 } from '../models';
 
@@ -22,6 +23,7 @@ export class ElevenLabsService {
   private onAudio?: (audioData: ArrayBuffer) => void;
   private onError?: (error: Error) => void;
   private onConnectionStateChange?: (state: ConnectionState) => void;
+  private onUserTranscript?: (transcript: string) => void;
   private conversationId?: string;
   private apiKey: string;
   private conversationMode: ConversationMode = null;
@@ -89,6 +91,7 @@ export class ElevenLabsService {
     this.onAudio = callbacks.onAudio;
     this.onError = callbacks.onError;
     this.onConnectionStateChange = callbacks.onConnectionStateChange;
+    this.onUserTranscript = callbacks.onUserTranscript;
 
     try {
       this.onConnectionStateChange?.('connecting');
@@ -222,8 +225,26 @@ export class ElevenLabsService {
         }
         break;
       }
+      case 'user_transcript':
+      case 'user_transcription_event': {
+        const transcript = message.user_transcription_event?.user_transcript;
+
+        if (transcript && this.onUserTranscript) {
+          this.onUserTranscript(transcript);
+        }
+        break;
+      }
       default:
-        console.log('🔍 Unknown message type:', message.type, message);
+        // Check if this is a user transcript message that we might have missed
+        if (
+          message.user_transcription_event ||
+          message.type === 'user_transcription_event'
+        ) {
+          const event = message.user_transcription_event as UserTranscriptEvent;
+          if (event?.user_transcript && this.onUserTranscript) {
+            this.onUserTranscript(event.user_transcript);
+          }
+        }
     }
   }
 

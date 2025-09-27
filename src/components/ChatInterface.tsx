@@ -97,6 +97,15 @@ export const ChatInterface: React.FC = () => {
         onError: () => {
           setIsConnected(false);
         },
+        onUserTranscript: (transcript: string) => {
+          const userMessage: Message = {
+            id: Date.now().toString(),
+            text: transcript,
+            sender: 'user',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, userMessage]);
+        },
         onConnectionStateChange: (state) => {
           setConnectionState(state);
           setIsConnected(state === 'connected');
@@ -119,14 +128,6 @@ export const ChatInterface: React.FC = () => {
             };
 
             audioManager.onAudioChunk = chunkHandler;
-            // Show connected message
-            const connectedMessage: Message = {
-              id: Date.now().toString(),
-              text: 'Connected',
-              sender: 'agent',
-              timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, connectedMessage]);
 
             // Automatically start recording after connection
             audioManager
@@ -189,9 +190,8 @@ export const ChatInterface: React.FC = () => {
     audioManager.stopAudio();
     setIsConnected(false);
     setConnectionState('disconnected');
-    setMessages([]);
-    // Reset flow to intro screen
-    setFlowStep('intro');
+    // Keep conversation history visible and stay on chat screen
+    // Don't reset flow step - stay on 'connected' screen
   };
 
   const toggleRecording = async () => {

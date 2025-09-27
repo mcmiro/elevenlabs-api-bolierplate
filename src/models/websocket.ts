@@ -41,7 +41,7 @@ export interface WebSocketMessage {
   llm_response_event?: LLMResponseEvent;
   audio_event?: AudioEvent;
   ping_event?: PingEvent;
-  user_transcript_event?: UserTranscriptEvent;
+  user_transcription_event?: UserTranscriptEvent;
   agent_response_correction_event?: AgentResponseCorrectionEvent;
   [key: string]: unknown;
 }

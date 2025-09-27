@@ -9,4 +9,5 @@ export interface ServiceCallbacks {
   onAudio?: (audioData: ArrayBuffer) => void;
   onError?: (error: Error) => void;
   onConnectionStateChange?: (state: ConnectionState) => void;
+  onUserTranscript?: (transcript: string) => void;
 }
