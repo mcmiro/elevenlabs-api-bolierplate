@@ -129,20 +129,13 @@ export const ChatInterface: React.FC = () => {
             };
 
             audioManager.onAudioChunk = chunkHandler;
-
-            // Automatically start recording when connected
-            console.log(
-              '🔗 Connected to agent - starting microphone automatically'
-            );
             audioManager
               .startRecording()
               .then(() => {
-                console.log('✅ Auto-recording started successfully');
-                // Clear any previous errors
                 setError('');
               })
               .catch((err) => {
-                console.warn('⚠️ Could not auto-start recording:', err);
+                console.warn('Could not auto-start recording:', err);
                 setError(
                   'Could not start microphone automatically. Click the mic button to start recording.'
                 );
@@ -178,7 +171,7 @@ export const ChatInterface: React.FC = () => {
       await elevenLabsServiceRef.current.sendTextMessage(inputText);
       setInputText('');
     } catch (err) {
-      console.error('❌ ChatInterface: Failed to send message:', err);
+      console.error('ChatInterface: Failed to send message:', err);
       setError('Failed to send message');
     }
   };
@@ -201,7 +194,7 @@ export const ChatInterface: React.FC = () => {
 
   const toggleRecording = async () => {
     if (!isConnected) {
-      console.warn('⚠️ ChatInterface: Cannot record - not connected to agent');
+      console.warn('ChatInterface: Cannot record - not connected to agent');
       setError('Please connect to an agent first');
       return;
     }
@@ -232,7 +225,7 @@ export const ChatInterface: React.FC = () => {
       const errorMessage =
         'Failed to access microphone. Please check permissions.';
       setError(errorMessage);
-      console.error('❌ ChatInterface: Microphone error:', err);
+      console.error('ChatInterface: Microphone error:', err);
     }
   };
 

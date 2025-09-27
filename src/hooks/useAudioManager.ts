@@ -96,14 +96,6 @@ export const useAudioManager = (): AudioManager => {
         const outputLength = Math.floor(inputData.length * resampleRatio);
         const resampledData = new Float32Array(outputLength);
 
-        // Log for debugging audio input
-        if (Date.now() - lastAudioSentRef.current > 5000) {
-          // Log every 5 seconds
-          console.log(
-            `🎤 Recording audio: ${sampleRate}Hz -> ${targetSampleRate}Hz`
-          );
-        }
-
         // High-quality resampling with linear interpolation
         for (let i = 0; i < outputLength; i++) {
           const sourceIndex = i / resampleRatio;
@@ -142,7 +134,6 @@ export const useAudioManager = (): AudioManager => {
       mediaRecorderRef.current = processor as unknown as MediaRecorder;
 
       setIsRecording(true);
-      console.log('🎤 Microphone recording started successfully');
     } catch {
       throw new Error('Failed to access microphone');
     }
@@ -199,12 +190,6 @@ export const useAudioManager = (): AudioManager => {
         // Use ElevenLabs Conversational AI output sample rate (16kHz)
         const sampleRate = 16000;
 
-        console.log(
-          `🔊 Playing audio chunk: ${numberOfSamples} samples at ${sampleRate}Hz (${(
-            numberOfSamples / sampleRate
-          ).toFixed(2)}s) - Queue remaining: ${audioQueueRef.current.length}`
-        );
-
         const audioBuffer = audioContext.createBuffer(
           numberOfChannels,
           numberOfSamples,
@@ -238,21 +223,18 @@ export const useAudioManager = (): AudioManager => {
         // Wait for this chunk to finish before processing next
         await new Promise<void>((resolve, reject) => {
           source.onended = () => {
-            console.log('🔇 Audio chunk completed');
             currentAudioRef.current = null;
             resolve();
           };
 
           // Handle potential playback errors
           const timeoutId = setTimeout(() => {
-            console.error('Audio playback timeout');
             currentAudioRef.current = null;
             reject(new Error('Audio playback timeout'));
           }, 10000); // 10 second timeout
 
           source.onended = () => {
             clearTimeout(timeoutId);
-            console.log('🔇 Audio chunk completed');
             currentAudioRef.current = null;
             resolve();
           };
@@ -267,7 +249,6 @@ export const useAudioManager = (): AudioManager => {
 
     setIsPlaying(false);
     isProcessingAudioRef.current = false;
-    console.log('🎵 Audio queue processing completed');
   }, []);
 
   const playAudio = useCallback(
@@ -279,11 +260,6 @@ export const useAudioManager = (): AudioManager => {
 
         // If already processing audio, the queue will be handled when current audio ends
         if (isProcessingAudioRef.current) {
-          console.log(
-            '🎵 Audio chunk queued (current queue length:',
-            audioQueueRef.current.length,
-            ')'
-          );
           return;
         }
 
@@ -316,7 +292,6 @@ export const useAudioManager = (): AudioManager => {
 
     setIsPlaying(false);
     isProcessingAudioRef.current = false; // Reset processing flag
-    console.log('🛑 Audio stopped and queue cleared');
   }, []);
 
   return {

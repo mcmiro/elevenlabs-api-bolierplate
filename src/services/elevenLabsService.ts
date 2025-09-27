@@ -12,7 +12,6 @@ import type {
   PingEvent,
   RawAgentData,
   ServiceCallbacks,
-  UserTranscriptEvent,
   WebSocketMessage,
 } from '../models';
 
@@ -185,20 +184,11 @@ export class ElevenLabsService {
         if (audioData && this.onAudio) {
           try {
             const audioBuffer = this.base64ToArrayBuffer(audioData);
-            const duration = audioBuffer.byteLength / 2 / 16000; // 16-bit samples at 16kHz
-
-            console.log(
-              `🎵 Received audio chunk: ${
-                audioBuffer.byteLength
-              } bytes (${duration.toFixed(2)}s at 16kHz) - Event ID: ${
-                event.event_id || 'none'
-              }`
-            );
 
             // Pass to audio queue for proper sequential playback (following official SDK pattern)
             this.onAudio(audioBuffer);
           } catch (error) {
-            console.error('❌ Error processing audio chunk:', error);
+            console.error('Error processing audio chunk:', error);
           }
         }
         break;
@@ -223,18 +213,6 @@ export class ElevenLabsService {
         this.lastPingTime = Date.now();
         break;
       }
-      case 'user_transcript': {
-        // Handle user speech recognition feedback (official SDK pattern)
-        const event = message.user_transcript_event as UserTranscriptEvent;
-        if (event?.user_transcript && this.onMessage) {
-          const transcript = event.user_transcript.trim();
-          if (transcript) {
-            console.log('🎤 User transcript:', transcript);
-            // Could emit this as a different event type if needed
-          }
-        }
-        break;
-      }
       case 'agent_response_correction': {
         // Handle agent response corrections (official SDK pattern)
         const event =
@@ -245,7 +223,6 @@ export class ElevenLabsService {
         break;
       }
       default:
-        // Log unknown message types for debugging
         console.log('🔍 Unknown message type:', message.type, message);
     }
   }
