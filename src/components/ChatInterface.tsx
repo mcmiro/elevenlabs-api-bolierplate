@@ -194,6 +194,23 @@ export const ChatInterface: React.FC = () => {
     // Don't reset flow step - stay on 'connected' screen
   };
 
+  const startNewConversation = async () => {
+    // Reset the conversation state
+    setMessages([]);
+    setInputText('');
+    setError('');
+    
+    // Disconnect if currently connected
+    if (isConnected) {
+      disconnect();
+      // Wait a moment for disconnect to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    // Reconnect to start fresh conversation
+    await connectToAgent();
+  };
+
   const toggleRecording = async () => {
     if (!isConnected) {
       console.warn('ChatInterface: Cannot record - not connected to agent');
@@ -352,18 +369,22 @@ export const ChatInterface: React.FC = () => {
               } ${audioManager.isPlaying ? 'playing' : ''} ${
                 isConnected ? 'connected' : ''
               }`}
-              onClick={isConnected ? disconnect : undefined}
-              style={{ cursor: isConnected ? 'pointer' : 'default' }}
-              title={isConnected ? 'Click to disconnect' : ''}
+              onClick={isConnected ? disconnect : startNewConversation}
+              style={{ cursor: 'pointer' }}
+              title={isConnected ? 'Click to disconnect' : 'Click to start new conversation'}
             >
               <div className="audio-waves">
                 <div className="wave"></div>
                 <div className="wave"></div>
                 <div className="wave"></div>
               </div>
-              {isConnected && (
+              {isConnected ? (
                 <div className="disconnect-overlay">
                   <span className="disconnect-text">Disconnect</span>
+                </div>
+              ) : (
+                <div className="disconnect-overlay">
+                  <span className="disconnect-text">Start New Conversation</span>
                 </div>
               )}
             </div>

@@ -266,7 +266,14 @@
   transform: scale(1.05);
 }
 
-.audio-circle.connected:hover .audio-waves {
+.audio-circle:not(.connected):hover {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  border-color: #4CAF50;
+  transform: scale(1.05);
+}
+
+.audio-circle.connected:hover .audio-waves,
+.audio-circle:not(.connected):hover .audio-waves {
   opacity: 0.3;
 }
 
@@ -286,16 +293,20 @@
   pointer-events: none;
 }
 
-.audio-circle.connected:hover .disconnect-overlay {
+.audio-circle.connected:hover .disconnect-overlay,
+.audio-circle:not(.connected):hover .disconnect-overlay {
   opacity: 1;
 }
 
 .disconnect-text {
   color: white;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  text-align: center;
+  line-height: 1.2;
+  padding: 0 8px;
 }
 
 .audio-waves {
