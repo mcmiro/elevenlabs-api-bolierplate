@@ -43,16 +43,14 @@ export class ElevenLabsService {
     Array<{ agentId: string; name: string; [key: string]: unknown }>
   > {
     try {
-      const response = await fetch(
-        'https://api.elevenlabs.io/v1/convai/agents',
-        {
-          method: 'GET',
-          headers: {
-            'xi-api-key': this.apiKey,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const apiBaseUrl = import.meta.env.VITE_ELEVEN_LABS_API_BASE_URL;
+      const response = await fetch(`${apiBaseUrl}convai/agents`, {
+        method: 'GET',
+        headers: {
+          'xi-api-key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
