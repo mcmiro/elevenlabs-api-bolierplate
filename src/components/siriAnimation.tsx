@@ -1,14 +1,11 @@
 'use client';
 
-//import { useState } from 'react';
 import './siriAnimation.css';
 
-// Simple cn utility function to combine class names
 function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ');
 }
 
-// --- SiriOrb Component ---
 interface SiriOrbProps {
   size?: string;
   className?: string;
@@ -19,12 +16,16 @@ interface SiriOrbProps {
     c3?: string;
   };
   animationDuration?: number;
+  onClick?: () => void;
+  onClickTitle?: string;
 }
 const SiriOrb: React.FC<SiriOrbProps> = ({
   size = '192px',
   className,
   colors,
   animationDuration = 20,
+  onClick,
+  onClickTitle,
 }) => {
   const defaultColors = {
     bg: 'transparent',
@@ -42,6 +43,8 @@ const SiriOrb: React.FC<SiriOrbProps> = ({
   return (
     <div
       className={cn('siri-orb', className)}
+      onClick={onClick}
+      title={onClickTitle}
       style={
         {
           width: size,
@@ -53,6 +56,7 @@ const SiriOrb: React.FC<SiriOrbProps> = ({
           '--animation-duration': `${animationDuration}s`,
           '--blur-amount': `${blurAmount}px`,
           '--contrast-amount': contrastAmount,
+          cursor: onClick ? 'pointer' : 'default',
         } as React.CSSProperties
       }
     ></div>
@@ -82,7 +86,6 @@ const SiriAnimation: React.FC<SiriAnimationProps> = ({
   className,
   ...orbProps
 }) => {
-  // Adjust animation speed based on state
   const getAnimationDuration = () => {
     if (isRecording) return animationDuration * 0.3; // Faster when recording
     if (isPlaying) return animationDuration * 0.5; // Medium speed when playing
@@ -90,7 +93,6 @@ const SiriAnimation: React.FC<SiriAnimationProps> = ({
     return animationDuration; // Normal speed when idle
   };
 
-  // Adjust colors based on state
   const getStateColors = () => {
     if (isRecording) {
       return {
@@ -119,10 +121,7 @@ const SiriAnimation: React.FC<SiriAnimationProps> = ({
   return (
     <div
       className={cn('siri-animation-container', className)}
-      onClick={onClick}
-      title={onClickTitle}
       style={{
-        cursor: onClick ? 'pointer' : 'default',
         ...style,
       }}
     >
@@ -130,7 +129,8 @@ const SiriAnimation: React.FC<SiriAnimationProps> = ({
         size={size}
         animationDuration={getAnimationDuration()}
         colors={getStateColors()}
-        className="drop-shadow-2xl"
+        onClick={onClick}
+        onClickTitle={onClickTitle}
         {...orbProps}
       />
       <div className="siri-content">{children}</div>

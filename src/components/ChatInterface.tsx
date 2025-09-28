@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import micMuteIcon from '../assets/mic-mute.svg';
+import micIcon from '../assets/mic.svg';
 import { useAudioManager } from '../hooks/useAudioManager';
 import type { ConnectionState, Message } from '../models';
 import { ElevenLabsService } from '../services/elevenLabsService';
@@ -15,7 +17,7 @@ export const ChatInterface: React.FC = () => {
   const [error, setError] = useState<string>('');
 
   // New state for the multi-step flow
-  const [flowStep, setFlowStep] = useState<'intro' | 'terms' | 'chat'>('intro');
+  const [flowStep, setFlowStep] = useState<'intro' | 'terms' | 'chat'>('chat');
 
   const elevenLabsServiceRef = useRef<ElevenLabsService | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -263,42 +265,23 @@ export const ChatInterface: React.FC = () => {
     setFlowStep('intro');
   };
 
-  if (!import.meta.env.VITE_ELEVEN_LABS_API_KEY) {
-    return (
-      <div className="chat-setup">
-        <div className="setup-container">
-          <h1>Eleven Labs Chat</h1>
-          <div className="error">
-            <h3>⚠️ API Key Required</h3>
-            <p>
-              Please create a <code>.env</code> file in your project root with:
-            </p>
-            <pre>VITE_ELEVEN_LABS_API_KEY=your_api_key_here</pre>
-            <p>
-              Get your API key from{' '}
-              <a
-                href="https://elevenlabs.io/app/settings/api-keys"
-                target="_blank"
-              >
-                Eleven Labs Settings
-              </a>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // First screen: Introduction
   if (flowStep === 'intro') {
     return (
       <div className="flow-screen intro-screen">
         <div className="flow-container">
-          <div className="intro-icon">📞</div>
-          <h2>Quick info call with TheSupply-Bot</h2>
-          <button onClick={handleLetDoIt} className="flow-button primary">
-            📞 Lets do it
-          </button>
+          <div className="intro-icon" onClick={handleLetDoIt}>
+            <SiriAnimation
+              size={'80px'}
+              animationDuration={12}
+              isConnected={false}
+              isRecording={false}
+              isPlaying={false}
+            />
+          </div>
+          <h2 className="cursor-pointer" onClick={handleLetDoIt}>
+            Lets do it
+          </h2>
         </div>
       </div>
     );
@@ -310,25 +293,30 @@ export const ChatInterface: React.FC = () => {
       <div className="flow-screen terms-screen">
         <div className="flow-container">
           <h2>Terms and conditions</h2>
-          <div className="terms-content">
-            <p>
-              By clicking "Agree," and each time I interact with this AI agent,
-              I consent to the recording, storage, and sharing of my
-              communications with third-party service providers, and as
-              described in the Privacy Policy. If you do not wish to have your
-              conversations recorded, please refrain from using this service.
-            </p>
-          </div>
-          <div className="terms-buttons">
-            <button
-              onClick={handleCancelTerms}
-              className="flow-button secondary"
-            >
-              Cancel
-            </button>
-            <button onClick={handleAcceptTerms} className="flow-button primary">
-              Accept
-            </button>
+          <div className="terms-container">
+            <div className="terms-content">
+              <p>
+                By clicking "Agree," and each time I interact with this AI
+                agent, I consent to the recording, storage, and sharing of my
+                communications with third-party service providers, and as
+                described in the Privacy Policy. If you do not wish to have your
+                conversations recorded, please refrain from using this service.
+              </p>
+            </div>
+            <div className="terms-buttons">
+              <button
+                onClick={handleCancelTerms}
+                className="flow-button secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAcceptTerms}
+                className="flow-button primary"
+              >
+                Accept
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -349,6 +337,30 @@ export const ChatInterface: React.FC = () => {
 
       {error && <div className="error">{error}</div>}
 
+      <div className="audio-visual">
+        <SiriAnimation
+          size={'120px'}
+          animationDuration={15}
+          onClick={isConnected ? disconnect : startNewConversation}
+          onClickTitle={
+            isConnected
+              ? 'Click to disconnect'
+              : 'Click to start new conversation'
+          }
+          isRecording={audioManager.isRecording}
+          isPlaying={audioManager.isPlaying}
+          isConnected={isConnected}
+        >
+          <div className="siri-overlay-content">
+            {isConnected ? (
+              <span className="action-text">Disconnect</span>
+            ) : (
+              <span className="action-text">Start New</span>
+            )}
+          </div>
+        </SiriAnimation>
+      </div>
+
       <div className="messages-container">
         {messages.map((message) => (
           <div key={message.id} className={`message ${message.sender}`}>
@@ -363,41 +375,6 @@ export const ChatInterface: React.FC = () => {
 
       <div className="conversation-controls">
         <div className="voice-interface">
-          <div className="audio-visual">
-            <SiriAnimation
-              size={'120px'}
-              animationDuration={15}
-              onClick={isConnected ? disconnect : startNewConversation}
-              onClickTitle={
-                isConnected
-                  ? 'Click to disconnect'
-                  : 'Click to start new conversation'
-              }
-              isRecording={audioManager.isRecording}
-              isPlaying={audioManager.isPlaying}
-              isConnected={isConnected}
-            >
-              <div className="siri-overlay-content">
-                {isConnected ? (
-                  <span className="action-text">Disconnect</span>
-                ) : (
-                  <span className="action-text">Start New</span>
-                )}
-              </div>
-            </SiriAnimation>
-          </div>
-          <button
-            onClick={toggleRecording}
-            className={`voice-button ${
-              audioManager.isRecording ? 'recording' : ''
-            }`}
-            disabled={!isConnected}
-            title={
-              audioManager.isRecording ? 'Stop Recording' : 'Start Recording'
-            }
-          >
-            🎤
-          </button>
           <div className="text-input-container">
             <textarea
               value={inputText}
@@ -408,6 +385,35 @@ export const ChatInterface: React.FC = () => {
               className="message-input"
               rows={1}
             />
+            <button
+              onClick={toggleRecording}
+              className={`voice-button ${
+                audioManager.isRecording ? 'recording' : ''
+              }`}
+              disabled={!isConnected}
+              title={
+                audioManager.isRecording ? 'Stop Recording' : 'Start Recording'
+              }
+            >
+              <img
+                src={
+                  !isConnected
+                    ? micMuteIcon
+                    : audioManager.isRecording
+                    ? micIcon
+                    : micMuteIcon
+                }
+                alt={
+                  isConnected
+                    ? audioManager.isRecording
+                      ? 'Stop Recording'
+                      : 'Start Recording'
+                    : 'Microphone not available'
+                }
+                width="20"
+                height="20"
+              />
+            </button>
             <button
               onClick={sendMessage}
               disabled={!isConnected || !inputText.trim()}
