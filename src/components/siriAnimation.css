@@ -1,9 +1,11 @@
+/* === CSS CUSTOM PROPERTY === */
 @property --angle {
   syntax: '<angle>';
   inherits: false;
   initial-value: 0deg;
 }
 
+/* === CONTAINER === */
 .siri-animation-container {
   position: relative;
   display: flex;
@@ -13,6 +15,7 @@
   height: 100%;
 }
 
+/* === CONTENT OVERLAY === */
 .siri-content {
   position: relative;
   z-index: 10;
@@ -25,10 +28,9 @@
   pointer-events: none;
 }
 
+/* === SIRI ORB === */
 .siri-orb {
-  background-color: rgba(241, 241, 241, 0.8) !important;
   position: absolute;
-  cursor: pointer !important;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -37,12 +39,14 @@
   grid-template-areas: 'stack';
   overflow: hidden;
   border-radius: 50%;
+  cursor: pointer !important;
   transition: all 0.3s ease;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  background: radial-gradient(
+  background-color: rgba(241, 241, 241, 0.8);
+  background-image: radial-gradient(
     circle,
     rgba(0, 0, 0, 0.08) 0%,
-    /* darker core for light mode */ rgba(0, 0, 0, 0.03) 30%,
+    rgba(0, 0, 0, 0.03) 30%,
     transparent 70%
   );
 }
@@ -51,9 +55,9 @@
   transform: translate(-50%, -50%) scale(1.05);
 }
 
-/* override for dark mode */
+/* Dark mode variant */
 .dark .siri-orb {
-  background: radial-gradient(
+  background-image: radial-gradient(
     circle,
     rgba(255, 255, 255, 0.08) 0%,
     rgba(255, 255, 255, 0.02) 30%,
@@ -61,6 +65,7 @@
   );
 }
 
+/* === ANIMATED GRADIENT LAYER === */
 .siri-orb::before {
   content: '';
   display: block;
@@ -68,7 +73,7 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: conic-gradient(
+  background-image: conic-gradient(
       from calc(var(--angle) * 1.2) at 30% 65%,
       var(--c3) 0deg,
       transparent 45deg 315deg,
@@ -106,6 +111,7 @@
   will-change: transform;
 }
 
+/* === HIGHLIGHT LAYER === */
 .siri-orb::after {
   content: '';
   display: block;
@@ -113,7 +119,7 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: radial-gradient(
+  background-image: radial-gradient(
     circle at 45% 55%,
     rgba(255, 255, 255, 0.1) 0%,
     rgba(255, 255, 255, 0.05) 30%,
@@ -122,6 +128,7 @@
   mix-blend-mode: overlay;
 }
 
+/* === ANIMATIONS === */
 @keyframes rotate {
   0% {
     --angle: 0deg;
@@ -131,49 +138,14 @@
   }
 }
 
+/* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .siri-orb::before {
     animation: none;
   }
 }
 
-/* Slider styles */
-.slider {
-  appearance: none;
-  -webkit-appearance: none;
-  height: 8px;
-  width: 100%;
-  cursor: pointer;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background-color: #e5e5e5;
-}
-
-.dark .slider {
-  border-color: rgba(255, 255, 255, 0.3);
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.slider::-webkit-slider-thumb {
-  appearance: none;
-  -webkit-appearance: none;
-  height: 20px;
-  width: 20px;
-  border-radius: 50%;
-  background: oklch(0.72 0.2 352.53);
-  cursor: pointer;
-  border: none;
-}
-
-.slider::-moz-range-thumb {
-  height: 20px;
-  width: 20px;
-  border-radius: 50%;
-  background: oklch(0.72 0.2 352.53);
-  cursor: pointer;
-  border: none;
-}
-
+/* === UTILITY CLASSES === */
 .cursor-pointer {
   cursor: pointer !important;
 }

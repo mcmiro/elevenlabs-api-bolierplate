@@ -17,7 +17,7 @@ export const ChatInterface: React.FC = () => {
   const [error, setError] = useState<string>('');
 
   // New state for the multi-step flow
-  const [flowStep, setFlowStep] = useState<'intro' | 'terms' | 'chat'>('chat');
+  const [flowStep, setFlowStep] = useState<'intro' | 'terms' | 'chat'>('intro');
 
   const elevenLabsServiceRef = useRef<ElevenLabsService | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -353,7 +353,7 @@ export const ChatInterface: React.FC = () => {
         >
           <div className="siri-overlay-content">
             {isConnected ? (
-              <span className="action-text">Disconnect</span>
+              <span className="action-text">Stop</span>
             ) : (
               <span className="action-text">Start New</span>
             )}
