@@ -3,6 +3,7 @@ import { useAudioManager } from '../hooks/useAudioManager';
 import type { ConnectionState, Message } from '../models';
 import { ElevenLabsService } from '../services/elevenLabsService';
 import './ChatInterface.css';
+import SiriAnimation from './siriAnimation';
 
 export const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -199,14 +200,14 @@ export const ChatInterface: React.FC = () => {
     setMessages([]);
     setInputText('');
     setError('');
-    
+
     // Disconnect if currently connected
     if (isConnected) {
       disconnect();
       // Wait a moment for disconnect to complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    
+
     // Reconnect to start fresh conversation
     await connectToAgent();
   };
@@ -363,31 +364,27 @@ export const ChatInterface: React.FC = () => {
       <div className="conversation-controls">
         <div className="voice-interface">
           <div className="audio-visual">
-            <div
-              className={`audio-circle ${
-                audioManager.isRecording ? 'recording' : ''
-              } ${audioManager.isPlaying ? 'playing' : ''} ${
-                isConnected ? 'connected' : ''
-              }`}
+            <SiriAnimation
+              size={'120px'}
+              animationDuration={15}
               onClick={isConnected ? disconnect : startNewConversation}
-              style={{ cursor: 'pointer' }}
-              title={isConnected ? 'Click to disconnect' : 'Click to start new conversation'}
+              onClickTitle={
+                isConnected
+                  ? 'Click to disconnect'
+                  : 'Click to start new conversation'
+              }
+              isRecording={audioManager.isRecording}
+              isPlaying={audioManager.isPlaying}
+              isConnected={isConnected}
             >
-              <div className="audio-waves">
-                <div className="wave"></div>
-                <div className="wave"></div>
-                <div className="wave"></div>
+              <div className="siri-overlay-content">
+                {isConnected ? (
+                  <span className="action-text">Disconnect</span>
+                ) : (
+                  <span className="action-text">Start New</span>
+                )}
               </div>
-              {isConnected ? (
-                <div className="disconnect-overlay">
-                  <span className="disconnect-text">Disconnect</span>
-                </div>
-              ) : (
-                <div className="disconnect-overlay">
-                  <span className="disconnect-text">Start New Conversation</span>
-                </div>
-              )}
-            </div>
+            </SiriAnimation>
           </div>
           <button
             onClick={toggleRecording}
