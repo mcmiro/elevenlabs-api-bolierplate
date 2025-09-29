@@ -2,9 +2,21 @@
 
 A React JavaScrip## Project Structure
 
+## Project Structure
+
 ````
 src/
 ├── components/
+│   ├── ChatInterface.jsx    # Main chat UI component
+│   ├── ChatInterface.css    # Styling
+│   └── siriAnimation.jsx    # Animated Siri-like component
+├── services/
+│   └── elevenLabsService.js # API integration service
+├── hooks/
+│   ├── useAudioManager.js   # Audio recording/playbook
+│   └── useElevenLabsChat.js # Main chat hook
+└── assets/                  # Images and icons
+```mponents/
 │   ├── ChatInterface.jsx    # Main chat UI component
 │   ├── ChatInterface.css    # Styling
 │   └── siriAnimation.jsx    # Animated Siri-like component

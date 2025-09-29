@@ -1,9 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  CONNECTION_STATES,
-  createMessage,
-  MESSAGE_SENDERS,
-} from '../models/index.js';
 import { ElevenLabsService } from '../services/elevenLabsService.js';
 import { useAudioManager } from './useAudioManager.js';
 
@@ -69,12 +64,12 @@ export const useElevenLabsChat = () => {
 
       await elevenLabsServiceRef.current.connectToAgent(selectedAgentId, {
         onMessage: (message) => {
-          const newMessage = createMessage(
-            Date.now().toString(),
-            message,
-            MESSAGE_SENDERS.AGENT,
-            new Date()
-          );
+          const newMessage = {
+            id: Date.now().toString(),
+            text: message,
+            sender: 'agent',
+            timestamp: new Date(),
+          };
           setMessages((prev) => [...prev, newMessage]);
         },
         onAudio: async (audioData) => {
@@ -88,20 +83,20 @@ export const useElevenLabsChat = () => {
           setIsConnected(false);
         },
         onUserTranscript: (transcript) => {
-          const userMessage = createMessage(
-            Date.now().toString(),
-            transcript,
-            MESSAGE_SENDERS.USER,
-            new Date()
-          );
+          const userMessage = {
+            id: Date.now().toString(),
+            text: transcript,
+            sender: 'user',
+            timestamp: new Date(),
+          };
           setMessages((prev) => [...prev, userMessage]);
         },
         onConnectionStateChange: (state) => {
           setConnectionState(state);
-          setIsConnected(state === CONNECTION_STATES.CONNECTED);
+          setIsConnected(state === 'connected');
 
           // Only set up audio chunk handler when connected, and auto-start recording
-          if (state === CONNECTION_STATES.CONNECTED) {
+          if (state === 'connected') {
             const chunkHandler = (chunk) => {
               try {
                 if (!elevenLabsServiceRef.current?.isConnected()) {
@@ -149,12 +144,12 @@ export const useElevenLabsChat = () => {
       return;
     }
 
-    const userMessage = createMessage(
-      Date.now().toString(),
-      inputText,
-      MESSAGE_SENDERS.USER,
-      new Date()
-    );
+    const userMessage = {
+      id: Date.now().toString(),
+      text: inputText,
+      sender: 'user',
+      timestamp: new Date(),
+    };
 
     setMessages((prev) => [...prev, userMessage]);
 
@@ -182,7 +177,7 @@ export const useElevenLabsChat = () => {
     audioManager.stopRecording();
     audioManager.stopAudio();
     setIsConnected(false);
-    setConnectionState(CONNECTION_STATES.DISCONNECTED);
+    setConnectionState('disconnected');
     // Keep conversation history visible and stay on chat screen
   }, [audioManager]);
 

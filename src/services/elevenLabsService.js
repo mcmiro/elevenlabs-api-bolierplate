@@ -1,12 +1,4 @@
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
-import {
-  CONNECTION_STATES,
-  CONVERSATION_MODES,
-  createServiceCallbacks,
-  getElevenLabsConfig,
-  processAgentsResponse,
-  processWebSocketMessage,
-} from '../models/index.js';
 
 export class ElevenLabsService {
   constructor(apiKey) {
@@ -31,8 +23,10 @@ export class ElevenLabsService {
 
   async getAgents() {
     try {
-      const config = getElevenLabsConfig();
-      const response = await fetch(`${config.baseUrl}/convai/agents`, {
+      const apiBaseUrl =
+        import.meta.env.VITE_ELEVEN_LABS_API_BASE_URL ||
+        'https://api.elevenlabs.io';
+      const response = await fetch(`${apiBaseUrl}/convai/agents`, {
         method: 'GET',
         headers: {
           'xi-api-key': this.apiKey,
@@ -48,7 +42,21 @@ export class ElevenLabsService {
       }
 
       const data = await response.json();
-      return processAgentsResponse(data);
+
+      // Handle different response formats
+      let agents = [];
+      if (Array.isArray(data)) {
+        agents = data;
+      } else if (data.agents && Array.isArray(data.agents)) {
+        agents = data.agents;
+      }
+
+      // Normalize agent data
+      return agents.map((agent) => ({
+        agentId: agent.agent_id || agent.agentId || agent.id || 'unknown',
+        name: agent.name || 'Unnamed Agent',
+        ...agent,
+      }));
     } catch (error) {
       console.error('Error fetching agents:', error);
       throw error;
@@ -56,15 +64,15 @@ export class ElevenLabsService {
   }
 
   async connectToAgent(agentId, callbacks = {}) {
-    const validCallbacks = createServiceCallbacks(callbacks);
-    this.onMessage = validCallbacks.onMessage;
-    this.onAudio = validCallbacks.onAudio;
-    this.onError = validCallbacks.onError;
-    this.onConnectionStateChange = validCallbacks.onConnectionStateChange;
-    this.onUserTranscript = validCallbacks.onUserTranscript;
+    this.onMessage = callbacks.onMessage || (() => {});
+    this.onAudio = callbacks.onAudio || (() => {});
+    this.onError = callbacks.onError || (() => {});
+    this.onConnectionStateChange =
+      callbacks.onConnectionStateChange || (() => {});
+    this.onUserTranscript = callbacks.onUserTranscript || (() => {});
 
     try {
-      this.onConnectionStateChange(CONNECTION_STATES.CONNECTING);
+      this.onConnectionStateChange('connecting');
       const response =
         await this.client.conversationalAi.conversations.getSignedUrl({
           agentId,
@@ -73,16 +81,16 @@ export class ElevenLabsService {
       this.ws = new WebSocket(response.signedUrl + '&source=js_sdk');
 
       this.ws.onopen = () => {
-        this.onConnectionStateChange(CONNECTION_STATES.CONNECTED);
+        this.onConnectionStateChange('connected');
         this.startHeartbeat();
 
-        // Send conversation initiation immediately upon connection (Official SDK pattern)
+        // Send conversation initiation immediately upon connection
         const initEvent = {
           type: 'conversation_initiation_client_data',
           custom_llm_extra_body: {},
           conversation_config_override: {
             tts: {
-              speed: 1, // Normal speaking speed (0.7-1.2 range)
+              speed: 1, // Normal speaking speed
             },
           },
           dynamic_variables: {},
@@ -102,7 +110,7 @@ export class ElevenLabsService {
 
       this.ws.onclose = (event) => {
         this.stopHeartbeat();
-        this.onConnectionStateChange(CONNECTION_STATES.DISCONNECTED);
+        this.onConnectionStateChange('disconnected');
         this.conversationId = null;
         this.conversationMode = null;
         this.conversationInitiated = false;
@@ -118,19 +126,16 @@ export class ElevenLabsService {
       this.ws.onerror = (error) => {
         this.stopHeartbeat();
         this.onError(new Error(`WebSocket connection error ${error}`));
-        this.onConnectionStateChange(CONNECTION_STATES.DISCONNECTED);
+        this.onConnectionStateChange('disconnected');
       };
     } catch (error) {
       this.onError(error);
-      this.onConnectionStateChange(CONNECTION_STATES.DISCONNECTED);
+      this.onConnectionStateChange('disconnected');
       throw error;
     }
   }
 
   handleMessage(message) {
-    // Process the message for potential normalization
-    processWebSocketMessage(message);
-
     switch (message.type) {
       case 'conversation_initiation_metadata': {
         const event = message.conversation_initiation_metadata_event;
@@ -229,11 +234,11 @@ export class ElevenLabsService {
     }
 
     // Set conversation mode to text when sending text message
-    if (this.conversationMode !== CONVERSATION_MODES.TEXT) {
-      this.conversationMode = CONVERSATION_MODES.TEXT;
+    if (this.conversationMode !== 'text') {
+      this.conversationMode = 'text';
     }
 
-    // Use the correct format for ElevenLabs text messages (following official SDK pattern)
+    // Use the correct format for ElevenLabs text messages
     const textMessage = {
       type: 'user_message',
       text: message,
@@ -257,8 +262,8 @@ export class ElevenLabsService {
     }
 
     // Set conversation mode to audio when first audio chunk is sent
-    if (this.conversationMode !== CONVERSATION_MODES.AUDIO) {
-      this.conversationMode = CONVERSATION_MODES.AUDIO;
+    if (this.conversationMode !== 'audio') {
+      this.conversationMode = 'audio';
     }
 
     // Check WebSocket state before sending
