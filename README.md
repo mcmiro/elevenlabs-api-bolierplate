@@ -1,6 +1,27 @@
 # Eleven Labs Chat Interface
 
-A React TypeScript application for interacting with Eleven Labs Conversational AI agents using a custom chat interface.
+A React JavaScrip## Project Structure
+
+````
+src/
+├── components/
+│   ├── ChatInterface.jsx    # Main chat UI component
+│   ├── ChatInterface.css    # Styling
+│   └── siriAnimation.jsx    # Animated Siri-like component
+├── services/
+│   └── elevenLabsService.js # API integration service
+├── hooks/
+│   ├── useAudioManager.js   # Audio recording/playback
+│   └── useElevenLabsChat.js # Main chat hook
+├── models/
+│   ├── agent.js             # Agent-related utilities
+│   ├── audio.js             # Audio management utilities
+│   ├── chat.js              # Chat and message utilities
+│   ├── service.js           # Service callback utilities
+│   ├── websocket.js         # WebSocket event processing
+│   └── index.js             # Central exports
+└── assets/                  # Images and icons
+``` interacting with Eleven Labs Conversational AI agents using a custom chat interface.
 
 ## Features
 
@@ -16,7 +37,7 @@ A React TypeScript application for interacting with Eleven Labs Conversational A
 
    ```bash
    pnpm install
-   ```
+````
 
 2. **Configure environment variables:**
 
@@ -63,7 +84,7 @@ src/
     └── chatConfig.ts       # Configuration interfaces
 ```
 
-## React + TypeScript + Vite
+## React + JavaScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
@@ -78,61 +99,41 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 ## Expanding the ESLint configuration
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+If you are developing a production application, we recommend updating the configuration to enable additional lint rules:
 
 ```js
-export default defineConfig([
-  globalIgnores(['dist']),
+export default [
+  { ignores: ['dist', 'public'] },
   {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
+    files: ['**/*.{js,jsx}'],
     languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
       parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
       },
-      // other options...
+    },
+    settings: {
+      react: { version: '18.3' },
+    },
+    plugins: {
+      react,
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...react.configs.recommended.rules,
+      ...reactHooks.configs.recommended.rules,
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+      'react/react-in-jsx-scope': 'off',
+      'react/prop-types': 'off',
     },
   },
-]);
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x';
-import reactDom from 'eslint-plugin-react-dom';
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+];
 ```

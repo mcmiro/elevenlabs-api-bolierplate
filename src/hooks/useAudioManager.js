@@ -1,26 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AudioManager } from '../models';
 
-export { type AudioManager } from '../models';
-
-export const useAudioManager = (): AudioManager => {
+export const useAudioManager = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const currentAudioRef = useRef<AudioBufferSourceNode | null>(null);
-  const currentHtmlAudioRef = useRef<HTMLAudioElement | null>(null);
-  const audioQueueRef = useRef<ArrayBuffer[]>([]); // Audio queue to prevent overlapping
+  const mediaRecorderRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const streamRef = useRef(null);
+  const currentAudioRef = useRef(null);
+  const currentHtmlAudioRef = useRef(null);
+  const audioQueueRef = useRef([]); // Audio queue to prevent overlapping
   const isProcessingAudioRef = useRef(false); // Prevent concurrent audio processing
 
   // Use ref for isRecording to avoid stale closures
   const isRecordingRef = useRef(false);
   const lastAudioSentRef = useRef(0); // Rate limiting for audio chunks
 
-  const onAudioChunkRef = useRef<((chunk: ArrayBuffer) => void) | undefined>(
-    undefined
-  );
+  const onAudioChunkRef = useRef(undefined);
 
   // Update the refs whenever states change
   useEffect(() => {
@@ -30,8 +25,7 @@ export const useAudioManager = (): AudioManager => {
   // Initialize audio context
   useEffect(() => {
     audioContextRef.current = new (window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext)();
+      window.webkitAudioContext)();
 
     return () => {
       if (
@@ -54,8 +48,7 @@ export const useAudioManager = (): AudioManager => {
 
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext })
-            .webkitAudioContext)();
+          window.webkitAudioContext)();
       }
 
       const audioContext = audioContextRef.current;
@@ -131,7 +124,7 @@ export const useAudioManager = (): AudioManager => {
       processor.connect(audioContext.destination);
 
       // Store the processor for cleanup
-      mediaRecorderRef.current = processor as unknown as MediaRecorder;
+      mediaRecorderRef.current = processor;
 
       setIsRecording(true);
     } catch {
@@ -143,7 +136,7 @@ export const useAudioManager = (): AudioManager => {
     if (mediaRecorderRef.current) {
       // Disconnect the audio processor (either AudioWorkletNode or ScriptProcessorNode)
       try {
-        const processor = mediaRecorderRef.current as unknown as AudioNode;
+        const processor = mediaRecorderRef.current;
         processor.disconnect();
         mediaRecorderRef.current = null;
       } catch {
@@ -168,13 +161,12 @@ export const useAudioManager = (): AudioManager => {
     setIsPlaying(true);
 
     while (audioQueueRef.current.length > 0) {
-      const audioData = audioQueueRef.current.shift()!;
+      const audioData = audioQueueRef.current.shift();
 
       try {
         if (!audioContextRef.current) {
           audioContextRef.current = new (window.AudioContext ||
-            (window as unknown as { webkitAudioContext: typeof AudioContext })
-              .webkitAudioContext)();
+            window.webkitAudioContext)();
         }
 
         // Resume AudioContext if suspended
@@ -221,7 +213,7 @@ export const useAudioManager = (): AudioManager => {
         currentAudioRef.current = source;
 
         // Wait for this chunk to finish before processing next
-        await new Promise<void>((resolve, reject) => {
+        await new Promise((resolve, reject) => {
           source.onended = () => {
             currentAudioRef.current = null;
             resolve();
@@ -252,7 +244,7 @@ export const useAudioManager = (): AudioManager => {
   }, []);
 
   const playAudio = useCallback(
-    async (audioData: ArrayBuffer) => {
+    async (audioData) => {
       try {
         // Following the official Eleven Labs SDK pattern:
         // Audio chunks should be queued and played sequentially, not discarded

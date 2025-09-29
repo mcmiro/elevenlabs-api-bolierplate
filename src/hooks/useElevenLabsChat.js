@@ -1,50 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ConnectionState, Message } from '../models';
-import { ElevenLabsService } from '../services/elevenLabsService';
-import { useAudioManager } from './useAudioManager';
+import {
+  CONNECTION_STATES,
+  createMessage,
+  MESSAGE_SENDERS,
+} from '../models/index.js';
+import { ElevenLabsService } from '../services/elevenLabsService.js';
+import { useAudioManager } from './useAudioManager.js';
 
-export type FlowStep = 'intro' | 'terms' | 'chat';
-
-export interface UseElevenLabsChatReturn {
-  // State
-  messages: Message[];
-  inputText: string;
-  isConnected: boolean;
-  connectionState: ConnectionState;
-  selectedAgentId: string;
-  error: string;
-  flowStep: FlowStep;
-
-  // Actions
-  setInputText: (text: string) => void;
-  setSelectedAgentId: (id: string) => void;
-  sendMessage: () => Promise<void>;
-  connectToAgent: () => Promise<void>;
-  disconnect: () => void;
-  startNewConversation: () => Promise<void>;
-  toggleRecording: () => Promise<void>;
-  handleLetDoIt: () => void;
-  handleAcceptTerms: () => Promise<void>;
-  handleCancelTerms: () => void;
-
-  // Utilities
-  handleKeyPress: (e: React.KeyboardEvent) => void;
-
-  // Audio manager instance
-  audioManager: ReturnType<typeof useAudioManager>;
-}
-
-export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
-  const [messages, setMessages] = useState<Message[]>([]);
+export const useElevenLabsChat = () => {
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionState, setConnectionState] =
-    useState<ConnectionState>('disconnected');
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
-  const [error, setError] = useState<string>('');
-  const [flowStep, setFlowStep] = useState<FlowStep>('intro');
+  const [connectionState, setConnectionState] = useState('disconnected');
+  const [selectedAgentId, setSelectedAgentId] = useState('');
+  const [error, setError] = useState('');
+  const [flowStep, setFlowStep] = useState('intro');
 
-  const elevenLabsServiceRef = useRef<ElevenLabsService | null>(null);
+  const elevenLabsServiceRef = useRef(null);
   const audioManager = useAudioManager();
 
   const initializeService = useCallback(async () => {
@@ -96,16 +68,16 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
       setError('');
 
       await elevenLabsServiceRef.current.connectToAgent(selectedAgentId, {
-        onMessage: (message: string) => {
-          const newMessage: Message = {
-            id: Date.now().toString(),
-            text: message,
-            sender: 'agent',
-            timestamp: new Date(),
-          };
+        onMessage: (message) => {
+          const newMessage = createMessage(
+            Date.now().toString(),
+            message,
+            MESSAGE_SENDERS.AGENT,
+            new Date()
+          );
           setMessages((prev) => [...prev, newMessage]);
         },
-        onAudio: async (audioData: ArrayBuffer) => {
+        onAudio: async (audioData) => {
           try {
             await audioManager.playAudio(audioData);
           } catch (err) {
@@ -115,22 +87,22 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
         onError: () => {
           setIsConnected(false);
         },
-        onUserTranscript: (transcript: string) => {
-          const userMessage: Message = {
-            id: Date.now().toString(),
-            text: transcript,
-            sender: 'user',
-            timestamp: new Date(),
-          };
+        onUserTranscript: (transcript) => {
+          const userMessage = createMessage(
+            Date.now().toString(),
+            transcript,
+            MESSAGE_SENDERS.USER,
+            new Date()
+          );
           setMessages((prev) => [...prev, userMessage]);
         },
         onConnectionStateChange: (state) => {
           setConnectionState(state);
-          setIsConnected(state === 'connected');
+          setIsConnected(state === CONNECTION_STATES.CONNECTED);
 
           // Only set up audio chunk handler when connected, and auto-start recording
-          if (state === 'connected') {
-            const chunkHandler = (chunk: ArrayBuffer) => {
+          if (state === CONNECTION_STATES.CONNECTED) {
+            const chunkHandler = (chunk) => {
               try {
                 if (!elevenLabsServiceRef.current?.isConnected()) {
                   return;
@@ -177,12 +149,12 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
       return;
     }
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: inputText,
-      sender: 'user',
-      timestamp: new Date(),
-    };
+    const userMessage = createMessage(
+      Date.now().toString(),
+      inputText,
+      MESSAGE_SENDERS.USER,
+      new Date()
+    );
 
     setMessages((prev) => [...prev, userMessage]);
 
@@ -196,7 +168,7 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
   }, [inputText]);
 
   const handleKeyPress = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         sendMessage();
@@ -210,7 +182,7 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
     audioManager.stopRecording();
     audioManager.stopAudio();
     setIsConnected(false);
-    setConnectionState('disconnected');
+    setConnectionState(CONNECTION_STATES.DISCONNECTED);
     // Keep conversation history visible and stay on chat screen
   }, [audioManager]);
 
@@ -244,7 +216,7 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
       } else {
         // Verify that the audio chunk handler is set up
         if (!audioManager.onAudioChunk) {
-          audioManager.onAudioChunk = (chunk: ArrayBuffer) => {
+          audioManager.onAudioChunk = (chunk) => {
             try {
               elevenLabsServiceRef.current?.sendAudioChunk(chunk);
             } catch (error) {

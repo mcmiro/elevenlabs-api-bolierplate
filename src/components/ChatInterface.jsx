@@ -1,11 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import micMuteIcon from '../assets/mic-mute.svg';
 import micIcon from '../assets/mic.svg';
-import { useElevenLabsChat } from '../hooks/useElevenLabsChat';
+import { useElevenLabsChat } from '../hooks/useElevenLabsChat.js';
 import './ChatInterface.css';
-import SiriAnimation from './siriAnimation';
+import SiriAnimation from './siriAnimation.jsx';
 
-export const ChatInterface: React.FC = () => {
+export const ChatInterface = () => {
   const {
     messages,
     inputText,
@@ -25,7 +25,7 @@ export const ChatInterface: React.FC = () => {
     audioManager,
   } = useElevenLabsChat();
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef(null);
 
   // Auto-scroll to bottom of messages
   const scrollToBottom = () => {
@@ -67,9 +67,9 @@ export const ChatInterface: React.FC = () => {
           <div className="terms-container">
             <div className="terms-content">
               <p>
-                By clicking "Agree," and each time I interact with this AI
-                agent, I consent to the recording, storage, and sharing of my
-                communications with third-party service providers, and as
+                By clicking &ldquo;Agree,&rdquo; and each time I interact with
+                this AI agent, I consent to the recording, storage, and sharing
+                of my communications with third-party service providers, and as
                 described in the Privacy Policy. If you do not wish to have your
                 conversations recorded, please refrain from using this service.
               </p>

@@ -2,24 +2,11 @@
 
 import './siriAnimation.css';
 
-function cn(...classes: (string | undefined | null | false)[]): string {
+function cn(...classes) {
   return classes.filter(Boolean).join(' ');
 }
 
-interface SiriOrbProps {
-  size?: string;
-  className?: string;
-  colors?: {
-    bg?: string;
-    c1?: string;
-    c2?: string;
-    c3?: string;
-  };
-  animationDuration?: number;
-  onClick?: () => void;
-  onClickTitle?: string;
-}
-const SiriOrb: React.FC<SiriOrbProps> = ({
+const SiriOrb = ({
   size = '192px',
   className,
   colors,
@@ -45,35 +32,23 @@ const SiriOrb: React.FC<SiriOrbProps> = ({
       className={cn('siri-orb', className)}
       onClick={onClick}
       title={onClickTitle}
-      style={
-        {
-          width: size,
-          height: size,
-          '--bg': finalColors.bg,
-          '--c1': finalColors.c1,
-          '--c2': finalColors.c2,
-          '--c3': finalColors.c3,
-          '--animation-duration': `${animationDuration}s`,
-          '--blur-amount': `${blurAmount}px`,
-          '--contrast-amount': contrastAmount,
-          cursor: onClick ? 'pointer' : 'default',
-        } as React.CSSProperties
-      }
+      style={{
+        width: size,
+        height: size,
+        '--bg': finalColors.bg,
+        '--c1': finalColors.c1,
+        '--c2': finalColors.c2,
+        '--c3': finalColors.c3,
+        '--animation-duration': `${animationDuration}s`,
+        '--blur-amount': `${blurAmount}px`,
+        '--contrast-amount': contrastAmount,
+        cursor: onClick ? 'pointer' : 'default',
+      }}
     ></div>
   );
 };
 
-export type SiriAnimationProps = SiriOrbProps & {
-  children?: React.ReactNode;
-  onClick?: () => void;
-  onClickTitle?: string;
-  style?: React.CSSProperties;
-  isRecording?: boolean;
-  isPlaying?: boolean;
-  isConnected?: boolean;
-};
-
-const SiriAnimation: React.FC<SiriAnimationProps> = ({
+const SiriAnimation = ({
   size = '192px',
   animationDuration = 20,
   children,
