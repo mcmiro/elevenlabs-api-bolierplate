@@ -99,25 +99,22 @@ export class ElevenLabsService {
         await this.client.conversationalAi.conversations.getSignedUrl({
           agentId,
         });
-      this.ws = new WebSocket(response.signedUrl + '&source=js_sdk');
+
+      this.ws = new WebSocket(response.signedUrl);
 
       this.ws.onopen = () => {
         this.onConnectionStateChange?.('connected');
         this.startHeartbeat();
 
-        // Send conversation initiation immediately upon connection (Official SDK pattern)
-        const initEvent = {
-          type: 'conversation_initiation_client_data',
-          custom_llm_extra_body: {},
-          conversation_config_override: {
-            tts: {
-              speed: 1, // Normal speaking speed (0.7-1.2 range)
-            },
-          },
-          dynamic_variables: {},
-        };
-
-        this.ws!.send(JSON.stringify(initEvent));
+        // Send conversation initiation message
+        setTimeout(() => {
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const initEvent = {
+              type: 'conversation_initiation_client_data',
+            };
+            this.ws!.send(JSON.stringify(initEvent));
+          }
+        }, 100);
       };
 
       this.ws.onmessage = (event) => {
@@ -136,11 +133,52 @@ export class ElevenLabsService {
         this.conversationMode = null;
         this.conversationInitiated = false;
 
-        // Handle different close codes
+        // Handle different close codes with more detailed error reporting
         if (event.code !== 1000 && event.code !== 1001) {
-          this.onError?.(
-            new Error(`Connection closed unexpectedly (code: ${event.code})`)
-          );
+          let errorMessage = `Connection closed unexpectedly (code: ${event.code})`;
+
+          // Provide more specific error messages based on close codes
+          switch (event.code) {
+            case 1002:
+              errorMessage = 'Protocol error - invalid WebSocket frame';
+              break;
+            case 1003:
+              errorMessage = 'Data type error - unsupported data received';
+              break;
+            case 1006:
+              errorMessage =
+                'Connection lost abnormally - possible network issue';
+              break;
+            case 1007:
+              errorMessage = 'Invalid data format - check message encoding';
+              break;
+            case 1008:
+              errorMessage =
+                'Policy violation - message violated server policy';
+              break;
+            case 1009:
+              errorMessage = 'Message too large - reduce audio chunk size';
+              break;
+            case 1011:
+              errorMessage = 'Server error - internal server problem';
+              break;
+            case 1012:
+              errorMessage = 'Service restart - server is restarting';
+              break;
+            case 1013:
+              errorMessage = 'Try again later - server temporarily unavailable';
+              break;
+            case 1015:
+              errorMessage = 'TLS handshake failure - security issue';
+              break;
+            default:
+              if (event.reason) {
+                errorMessage += `: ${event.reason}`;
+              }
+          }
+
+          console.error('WebSocket closed:', errorMessage);
+          this.onError?.(new Error(errorMessage));
         }
       };
 
@@ -202,6 +240,22 @@ export class ElevenLabsService {
         const eventId = event?.event_id;
 
         this.lastPingTime = Date.now(); // Update last ping time when we receive a ping
+
+        // Reset connection timeout since we received a ping
+        if (this.connectionTimeout) {
+          clearTimeout(this.connectionTimeout);
+          this.connectionTimeout = window.setTimeout(() => {
+            const timeSinceLastPing = Date.now() - this.lastPingTime;
+            if (timeSinceLastPing > 60000) {
+              console.warn(
+                'Connection timeout - no ping received for 60 seconds'
+              );
+              this.onError?.(new Error('Connection timeout'));
+              this.disconnect();
+            }
+          }, 60000);
+        }
+
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           const pongResponse = {
             type: 'pong',
@@ -278,12 +332,12 @@ export class ElevenLabsService {
 
   async sendAudioChunk(audioData: ArrayBuffer): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error('WebSocket not connected');
+      return; // Skip chunk if not connected
     }
 
     // Wait for conversation initiation to complete
     if (!this.conversationInitiated || !this.conversationId) {
-      return; // Skip this chunk instead of throwing an error
+      return; // Skip this chunk
     }
 
     // Set conversation mode to audio when first audio chunk is sent
@@ -293,25 +347,24 @@ export class ElevenLabsService {
 
     // Check WebSocket state before sending
     if (this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error('Connection lost during audio transmission');
+      return; // Skip chunk if connection lost
     }
 
     const base64Audio = this.arrayBufferToBase64(audioData);
 
     try {
-      // Use the exact format from the official ElevenLabs SDK - NO type field
       const audioEvent = {
         user_audio_chunk: base64Audio,
       };
 
-      // Check if WebSocket is still open right before sending
+      // Final check if WebSocket is still open
       if (this.ws.readyState !== WebSocket.OPEN) {
-        throw new Error('WebSocket closed during audio send preparation');
+        return;
       }
 
       this.ws.send(JSON.stringify(audioEvent));
     } catch (error) {
-      throw new Error('Failed to send audio data', error as Error);
+      // Silently handle audio send errors to prevent breaking the stream
     }
   }
 
@@ -341,6 +394,27 @@ export class ElevenLabsService {
   private startHeartbeat(): void {
     this.stopHeartbeat();
     this.lastPingTime = Date.now();
+
+    // Set up ping interval - send ping every 30 seconds
+    this.heartbeatInterval = window.setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        const pingEvent = {
+          type: 'ping',
+          event_id: `ping_${Date.now()}`,
+        };
+        this.ws.send(JSON.stringify(pingEvent));
+      }
+    }, 30000);
+
+    // Set up connection timeout - if no ping received in 60 seconds, consider connection dead
+    this.connectionTimeout = window.setTimeout(() => {
+      const timeSinceLastPing = Date.now() - this.lastPingTime;
+      if (timeSinceLastPing > 60000) {
+        console.warn('Connection timeout - no ping received for 60 seconds');
+        this.onError?.(new Error('Connection timeout'));
+        this.disconnect();
+      }
+    }, 60000);
   }
 
   private stopHeartbeat(): void {

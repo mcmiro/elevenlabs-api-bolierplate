@@ -39,7 +39,7 @@ export const ChatInterface: React.FC = () => {
   // First screen: Introduction
   if (flowStep === 'intro') {
     return (
-      <div className="flex justify-center items-center h-available p-5 border-r border-black">
+      <div className="flex justify-center items-center h-full p-5 border-r border-black">
         <div className="p-10 w-full text-center">
           <div
             className="flex justify-center items-center pb-7 cursor-pointer"
@@ -66,7 +66,7 @@ export const ChatInterface: React.FC = () => {
   // Second screen: Terms and Conditions
   if (flowStep === 'terms') {
     return (
-      <div className="flex justify-center items-center h-available p-5 border-r border-black">
+      <div className="flex justify-center items-center h-full p-5 border-r border-black">
         <div className="p-10 w-full text-center">
           <h2 className="text-gray-800 text-2xl mb-7 font-semibold">
             Terms and conditions
@@ -105,7 +105,7 @@ export const ChatInterface: React.FC = () => {
 
   // Third screen: Chat interface with connected state
   return (
-    <div className="w-full border border-black flex flex-col h-available relative">
+    <div className="w-full border border-black flex flex-col h-full relative">
       <div className="p-5 text-center border-b border-black">
         <div className="flex items-center justify-center gap-2.5">
           <div
@@ -124,11 +124,11 @@ export const ChatInterface: React.FC = () => {
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg m-4 text-sm">
+      {/*{error && (
+        <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 m-4 text-sm">
           {error}
         </div>
-      )}
+      )}*/}
 
       <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-10 w-[120px] h-[120px] flex justify-center items-center">
         <AIAnimation

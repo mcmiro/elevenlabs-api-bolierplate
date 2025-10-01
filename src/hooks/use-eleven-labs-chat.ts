@@ -112,8 +112,9 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
             console.error('useElevenLabsChat: Failed to play audio:', err);
           }
         },
-        onError: () => {
+        onError: (error: Error) => {
           setIsConnected(false);
+          setError(error.message);
         },
         onUserTranscript: (transcript: string) => {
           const userMessage: Message = {
