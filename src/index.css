@@ -1,38 +1,47 @@
 @import 'tailwindcss';
-@import "tw-animate-css";
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
+
+@font-face {
+  font-family: 'WhyteInktrap';
+  src: url('/fonts/whyte/WhyteInktrap-Book.woff2') format('woff2'),
+    url('/fonts/whyte/WhyteInktrap-Book.woff') format('woff'),
+    url('/fonts/whyte/WhyteInktrap-Book.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-whyte: 'WhyteInktrap', sans-serif;
+  --height-available: calc(100vh - var(--top-bar));
+}
 
 * {
   box-sizing: border-box;
 }
 
 :root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    'Roboto', sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  background-color: #f8f7f3;
-  color: #213547;
-
+  --top-bar: 44px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  --background: oklch(0.97 0.01 95);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.97 0.01 85);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
+  --accent: oklch(0.784 0.094 30.686);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
@@ -147,3 +156,25 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Color Palette from the main website */
+/*$light-gray: #bbbbbb;
+$backgroundGray: #f5f6f6;
+$backgroundGrayHover: #dedede;
+$medGray: #777777;
+$black: #000000;
+$darkGray: #333333;
+$red-global: #e74c3c;
+$gold: #c7bda4;
+
+$cream: #f8f7f2;
+$cement: #ebe7e1;
+$lightPeach: #ffe8e1;
+$salmon: #feb29c;
+$orange: #f7941d;
+$goldLeather: #ca7f28;
+$lilac: #bb9cfe;
+$cobalt: #356ad2;
+$seaGreen: #5f8b86;
+$textBlack: #162c29;
+$purple: #8357df;*/
