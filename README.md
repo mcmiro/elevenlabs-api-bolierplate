@@ -1,6 +1,21 @@
 # Eleven Labs Chat Interface
 
-A React TypeScript application for interacting with Eleven Labs Conversational AI agents using a custom chat interface.
+A React TypeScript ```
+src/
+├── components/
+│ ├── chat-interface.tsx # Main chat UI component
+│ └── chat-interface.css # Styling
+├── services/
+│ └── eleven-labs-service.ts # API integration service
+├── hooks/
+│ └── use-audio-manager.ts # Audio recording/playback
+├── utils/
+│ ├── debugApi.ts # Debug utilities
+│ └── testUtils.ts # Testing utilities
+└── config/
+└── chatConfig.ts # Configuration interfaces
+
+````interacting with Eleven Labs Conversational AI agents using a custom chat interface.
 
 ## Features
 
@@ -16,7 +31,7 @@ A React TypeScript application for interacting with Eleven Labs Conversational A
 
    ```bash
    pnpm install
-   ```
+````
 
 2. **Configure environment variables:**
 

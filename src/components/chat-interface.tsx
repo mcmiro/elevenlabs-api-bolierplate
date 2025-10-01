@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import micMuteIcon from '../assets/mic-mute.svg';
 import micIcon from '../assets/mic.svg';
-import { useElevenLabsChat } from '../hooks/useElevenLabsChat';
-import './ChatInterface.css';
-import SiriAnimation from './siriAnimation';
+import { useElevenLabsChat } from '../hooks/use-eleven-labs-chat';
+import './chat-interface.css';
+import SiriAnimation from './siri-animation';
 
 export const ChatInterface: React.FC = () => {
   const {

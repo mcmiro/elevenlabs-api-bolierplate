@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ConnectionState, Message } from '../models';
-import { ElevenLabsService } from '../services/elevenLabsService';
-import { useAudioManager } from './useAudioManager';
+import { ElevenLabsService } from '../utils/eleven-labs-service';
+import { useAudioManager } from './use-audio-manager';
 
 export type FlowStep = 'intro' | 'terms' | 'chat';
 

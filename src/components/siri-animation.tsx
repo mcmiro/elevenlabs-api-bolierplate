@@ -1,6 +1,6 @@
 'use client';
 
-import './siriAnimation.css';
+import './siri-animation.css';
 
 function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ');
