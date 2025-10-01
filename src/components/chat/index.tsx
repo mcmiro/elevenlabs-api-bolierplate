@@ -195,8 +195,8 @@ export const ChatInterface: React.FC = () => {
             placeholder="Send a message"
             disabled={!isConnected}
             className={cn(
-              'flex-1 bg-transparent p-3 px-4 resize-none font-inherit text-2xl leading-6 outline-none h-full border-0 border-r border-black',
-              !isConnected && 'bg-gray-50 text-gray-400 cursor-not-allowed'
+              'flex-1 bg-transparent p-3 px-4 resize-none font-inherit text-xl leading-8 outline-none h-full border-0 border-r border-black',
+              !isConnected && 'bg-transparent text-gray-700 cursor-not-allowed'
             )}
             rows={1}
           />
