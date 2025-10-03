@@ -29,8 +29,8 @@ export class ElevenLabsService {
   private conversationInitiated: boolean = false;
 
   constructor() {
-    this.backendUrl =
-      import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    // In production (monorepo), use same domain. In development, use localhost:3001
+    this.backendUrl = import.meta.env.VITE_BACKEND_URL || '';
     this.lastPingTime = Date.now();
   }
 

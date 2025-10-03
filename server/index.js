@@ -20,7 +20,7 @@ app.use(
   cors({
     origin:
       process.env.NODE_ENV === 'production'
-        ? ['https://your-heroku-app.herokuapp.com'] // Replace with your actual Heroku app URL
+        ? true // Allow same origin in production (monorepo setup)
         : ['http://localhost:5173', 'http://localhost:3000'],
   })
 );
