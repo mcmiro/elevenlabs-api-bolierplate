@@ -11,7 +11,6 @@ export const ChatInterface: React.FC = () => {
     inputText,
     isConnected,
     connectionState,
-    error,
     flowStep,
     setInputText,
     sendMessage,
