@@ -2,6 +2,12 @@ import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// ES modules compatibility
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables from .env file
 dotenv.config();
@@ -19,6 +25,11 @@ app.use(
   })
 );
 app.use(express.json());
+
+// Serve static files from the React app build directory (for production)
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')));
+}
 
 // Initialize Eleven Labs client
 const getElevenLabsClient = () => {
@@ -99,6 +110,13 @@ app.post('/api/agents/:agentId/connect', async (req, res) => {
     res.status(500).json({ error: 'Failed to get connection URL' });
   }
 });
+
+// Catch-all handler: send back React's index.html file for any non-API routes
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  });
+}
 
 // Error handling middleware
 app.use((error, req, res, next) => {
