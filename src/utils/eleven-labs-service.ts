@@ -29,9 +29,37 @@ export class ElevenLabsService {
   private conversationInitiated: boolean = false;
 
   constructor() {
-    // In production (monorepo), use same domain. In development, use localhost:3001
-    this.backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+    // Dynamic URL detection
+    this.backendUrl = this.getBackendUrl();
     this.lastPingTime = Date.now();
+  }
+
+  private getBackendUrl(): string {
+    // 1. If explicitly set, use it
+    if (import.meta.env.VITE_BACKEND_URL) {
+      return import.meta.env.VITE_BACKEND_URL;
+    }
+
+    // 2. If APP_URL is set, use it
+    if (import.meta.env.VITE_APP_URL) {
+      return import.meta.env.VITE_APP_URL;
+    }
+
+    // 3. Auto-detect based on current location
+    if (typeof window !== 'undefined') {
+      const currentUrl = window.location.origin;
+      
+      // If we're on localhost:5173 (dev), point to localhost:3001 (backend)
+      if (currentUrl.includes('localhost:5173')) {
+        return 'http://localhost:3001';
+      }
+      
+      // If we're on Heroku or any other domain, use same domain
+      return currentUrl;
+    }
+
+    // 4. Fallback for SSR or unusual environments
+    return import.meta.env.PROD ? '' : 'http://localhost:3001';
   }
 
   async getAgents(): Promise<Agent[]> {
