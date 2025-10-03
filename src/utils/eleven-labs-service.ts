@@ -1,23 +1,19 @@
-import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 import type {
   Agent,
   AgentResponseCorrectionEvent,
   AgentResponseEvent,
-  AgentsResponse,
   AudioEvent,
   ConnectionState,
   ConversationInitiationEvent,
   ConversationMode,
   LLMResponseEvent,
   PingEvent,
-  RawAgentData,
   ServiceCallbacks,
   UserTranscriptEvent,
   WebSocketMessage,
 } from '../models';
 
 export class ElevenLabsService {
-  private client: ElevenLabsClient;
   private ws: WebSocket | null = null;
   private onMessage?: (message: string) => void;
   private onAudio?: (audioData: ArrayBuffer) => void;
@@ -25,29 +21,24 @@ export class ElevenLabsService {
   private onConnectionStateChange?: (state: ConnectionState) => void;
   private onUserTranscript?: (transcript: string) => void;
   private conversationId?: string;
-  private apiKey: string;
+  private backendUrl: string;
   private conversationMode: ConversationMode = null;
   private heartbeatInterval?: number;
   private lastPingTime: number = 0;
   private connectionTimeout?: number;
   private conversationInitiated: boolean = false;
 
-  constructor(apiKey: string) {
-    if (!apiKey || !apiKey.startsWith('sk_')) {
-      throw new Error('API key must start with "sk_" and be valid');
-    }
-    this.apiKey = apiKey;
+  constructor() {
+    // In production (monorepo), use same domain. In development, use localhost:3001
+    this.backendUrl = import.meta.env.VITE_BACKEND_URL || '';
     this.lastPingTime = Date.now();
-    this.client = new ElevenLabsClient({ apiKey });
   }
 
   async getAgents(): Promise<Agent[]> {
     try {
-      const apiBaseUrl = import.meta.env.VITE_ELEVEN_LABS_API_BASE_URL;
-      const response = await fetch(`${apiBaseUrl}convai/agents`, {
+      const response = await fetch(`${this.backendUrl}/api/agents`, {
         method: 'GET',
         headers: {
-          'xi-api-key': this.apiKey,
           'Content-Type': 'application/json',
         },
       });
@@ -59,27 +50,17 @@ export class ElevenLabsService {
         );
       }
 
-      const data = await response.json();
+      const agents = await response.json();
 
-      // Ensure the response is an array and map it to the expected format
-      if (Array.isArray(data)) {
-        return data.map((agent: RawAgentData) => ({
-          agentId: agent.agent_id || agent.agentId || agent.id || 'unknown',
-          name: agent.name || 'Unnamed Agent',
-          ...agent,
-        }));
-      } else if (data.agents && Array.isArray(data.agents)) {
-        return (data as AgentsResponse).agents!.map((agent: RawAgentData) => ({
-          agentId: agent.agent_id || agent.agentId || agent.id || 'unknown',
-          name: agent.name || 'Unnamed Agent',
-          ...agent,
-        }));
-      } else {
-        throw new Error('Unexpected response format: agents data not found');
-      }
+      // The backend already normalizes the response format
+      return agents;
     } catch (error) {
       console.error('Error fetching agents:', error);
-      throw error;
+      throw new Error(
+        `Failed to fetch agents: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`
+      );
     }
   }
 
@@ -95,12 +76,25 @@ export class ElevenLabsService {
 
     try {
       this.onConnectionStateChange?.('connecting');
-      const response =
-        await this.client.conversationalAi.conversations.getSignedUrl({
-          agentId,
-        });
 
-      this.ws = new WebSocket(response.signedUrl);
+      // Get signed URL from our backend
+      const response = await fetch(
+        `${this.backendUrl}/api/agents/${agentId}/connect`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get connection URL: ${errorText}`);
+      }
+
+      const { signedUrl } = await response.json();
+      this.ws = new WebSocket(signedUrl);
 
       this.ws.onopen = () => {
         this.onConnectionStateChange?.('connected');
@@ -363,7 +357,7 @@ export class ElevenLabsService {
       }
 
       this.ws.send(JSON.stringify(audioEvent));
-    } catch (error) {
+    } catch {
       // Silently handle audio send errors to prevent breaking the stream
     }
   }

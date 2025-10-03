@@ -48,18 +48,9 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
   const audioManager = useAudioManager();
 
   const initializeService = useCallback(async () => {
-    const apiKey = import.meta.env.VITE_ELEVEN_LABS_API_KEY;
-
-    if (!apiKey?.trim()) {
-      setError(
-        'API key not found. Please add VITE_ELEVEN_LABS_API_KEY to your .env file'
-      );
-      return;
-    }
-
     try {
       setError('');
-      const service = new ElevenLabsService(apiKey);
+      const service = new ElevenLabsService();
       elevenLabsServiceRef.current = service;
 
       // Load agents
@@ -69,7 +60,9 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
         setSelectedAgentId(agentList[0].agentId);
       }
     } catch (err) {
-      setError('Failed to initialize service. Please check your API key.');
+      setError(
+        'Failed to initialize service. Please check your backend connection.'
+      );
       console.error('Service initialization failed:', err);
     }
   }, [selectedAgentId]);
@@ -80,15 +73,8 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
   }, [initializeService]);
 
   const connectToAgent = useCallback(async () => {
-    const apiKey = import.meta.env.VITE_ELEVEN_LABS_API_KEY;
-
     if (!elevenLabsServiceRef.current || !selectedAgentId) {
       setError('Please select an agent');
-      return;
-    }
-
-    if (!apiKey) {
-      setError('API key not found in environment variables');
       return;
     }
 
