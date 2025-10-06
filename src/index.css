@@ -24,6 +24,13 @@
 
 :root {
   --top-bar: 44px;
+  --red-global: #e74c3c;
+  --salmon: #feb29c;
+  --orange: #f7941d;
+  --lilac: #bb9cfe;
+  --cobalt: #356ad2;
+  --sea-green: #5f8b86;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -172,9 +179,9 @@ $cement: #ebe7e1;
 $lightPeach: #ffe8e1;
 $salmon: #feb29c;
 $orange: #f7941d;
-$goldLeather: #ca7f28;
 $lilac: #bb9cfe;
 $cobalt: #356ad2;
 $seaGreen: #5f8b86;
+$goldLeather: #ca7f28;
 $textBlack: #162c29;
 $purple: #8357df;*/

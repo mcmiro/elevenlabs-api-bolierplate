@@ -22,13 +22,13 @@ export default function index() {
             <Typography as="h1" size="h1" className="font-whyte">
               Try out<br></br>
               our AI talk bot. <br></br>
-              She's
+              It’s
             </Typography>
             <AnimatedText />
             <Typography as="h1" size="h1" className="font-whyte -mt-1 lg:mt-0">
-              Save some
+              We all need
               <br></br>
-              emails in your box.
+              less emails.
             </Typography>
           </div>
         </div>
