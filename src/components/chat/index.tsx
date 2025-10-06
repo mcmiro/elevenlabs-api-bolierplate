@@ -110,11 +110,12 @@ export const ChatInterface: React.FC = () => {
           <div
             className={cn(
               'w-3 h-3 rounded-full',
-              connectionState === 'connecting' && 'bg-yellow-500 animate-pulse',
-              connectionState === 'connected' && 'bg-green-500',
+              connectionState === 'connecting' &&
+                'bg-[var(--orange)] animate-pulse',
+              connectionState === 'connected' && 'bg-[var(--sea-green)]',
               connectionState !== 'connecting' &&
                 connectionState !== 'connected' &&
-                'bg-red-500'
+                'bg-[var(--red-global)]'
             )}
           ></div>
           <span className="font-semibold text-gray-800 capitalize">
@@ -122,12 +123,6 @@ export const ChatInterface: React.FC = () => {
           </span>
         </div>
       </div>
-
-      {/*{error && (
-        <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 m-4 text-sm">
-          {error}
-        </div>
-      )}*/}
 
       <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-10 w-[120px] h-[120px] flex justify-center items-center">
         <AIAnimation

@@ -12,6 +12,9 @@ const __dirname = path.dirname(__filename);
 // Load environment variables from .env file
 dotenv.config();
 
+// Load environment variables
+dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -41,10 +44,6 @@ const getElevenLabsClient = () => {
 };
 
 // Routes
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
 // Get agents endpoint
 app.get('/api/agents', async (req, res) => {
   try {

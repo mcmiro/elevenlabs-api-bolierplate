@@ -4,7 +4,9 @@ import Typography from '../ui/typography';
 
 const messages = [
   { text: 'friendly.', color: '#feb29c' },
+  { text: 'quick.', color: '#f7941d' },
   { text: 'right to the point.', color: '#356ad2' },
+  { text: 'moderately funny.', color: '#bb9cfe' },
 ];
 
 export default function AnimatedText() {
