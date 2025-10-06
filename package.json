@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@10.18.1",
+  "engines": {
+    "node": "22.x",
+    "npm": "10.x",
+    "pnpm": "10.x"
+  },
   "scripts": {
     "dev": "concurrently \"pnpm run dev:client\" \"pnpm run dev:server\"",
     "dev:client": "vite",

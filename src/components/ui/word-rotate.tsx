@@ -9,10 +9,6 @@ interface WordRotateProps {
   duration?: number;
   motionProps?: MotionProps;
   className?: string;
-  words: string[];
-  duration?: number;
-  motionProps?: MotionProps;
-  className?: string;
 }
 
 export function WordRotate({
@@ -23,11 +19,9 @@ export function WordRotate({
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: 50 },
     transition: { duration: 0.25, ease: 'easeOut' },
-    transition: { duration: 0.25, ease: 'easeOut' },
   },
   className,
 }: WordRotateProps) {
-  const [index, setIndex] = useState(0);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
