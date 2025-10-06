@@ -41,10 +41,6 @@ const getElevenLabsClient = () => {
 };
 
 // Routes
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
 // Get agents endpoint
 app.get('/api/agents', async (req, res) => {
   try {

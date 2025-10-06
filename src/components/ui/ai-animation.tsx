@@ -188,7 +188,7 @@ const AIAnimation: React.FC<AIAnimationProps> = ({
 
       <div
         className={cn(
-          'ai-animation cursor-pointer !bg-white/90 relative',
+          'ai-animation cursor-pointer !bg-white/90 relative border-10 border-background shadow-2xl',
           className
         )}
         style={

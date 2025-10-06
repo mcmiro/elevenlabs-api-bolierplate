@@ -1,9 +1,14 @@
-import { AnimatePresence, motion, type MotionProps } from 'motion/react';
+import type { MotionProps } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 
 import { cn } from '@/lib/utils';
 
 interface WordRotateProps {
+  words: string[];
+  duration?: number;
+  motionProps?: MotionProps;
+  className?: string;
   words: string[];
   duration?: number;
   motionProps?: MotionProps;
@@ -18,9 +23,11 @@ export function WordRotate({
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: 50 },
     transition: { duration: 0.25, ease: 'easeOut' },
+    transition: { duration: 0.25, ease: 'easeOut' },
   },
   className,
 }: WordRotateProps) {
+  const [index, setIndex] = useState(0);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
