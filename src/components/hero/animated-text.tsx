@@ -22,7 +22,7 @@ export default function AnimatedText() {
   const currentMessage = messages[index];
 
   return (
-    <div className="w-full h-10 sm:h-14 md:h-16 lg:h-20 overflow-hidden relative">
+    <div className="w-full h-10 sm:h-14 md:h-16 overflow-hidden relative">
       <AnimatePresence>
         <motion.div
           key={currentMessage.text + index}

@@ -5,7 +5,7 @@ import { type VariantProps, cva } from 'class-variance-authority';
 const typographyVariants = cva('', {
   variants: {
     size: {
-      h1: 'text-4xl sm:text-5xl md:text-[62px] md:!leading-[54px] lg:text-[80px] lg:!leading-[72px] tracking-tight',
+      h1: 'text-4xl sm:text-5xl md:text-[64px] md:!leading-[54px] tracking-tight',
       h2: 'text-3xl sm:text-4xl md:text-5xl !leading-[1.2] tracking-tight',
       h3: 'text-2xl sm:text-3xl !leading-[1.2] tracking-tight',
       h4: 'text-xl sm:text-2xl !leading-[1.2] tracking-tight',
