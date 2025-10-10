@@ -1,5 +1,6 @@
 import { Mic, MicOff, Send } from 'lucide-react';
 import React, { useEffect, useRef } from 'react';
+import { useChatContext } from '../../contexts/chat-context';
 import { useElevenLabsChat } from '../../hooks/use-eleven-labs-chat';
 import { cn } from '../../lib/utils';
 import AIAnimation from '../ui/ai-animation';
@@ -24,7 +25,13 @@ export const ChatInterface: React.FC = () => {
     audioManager,
   } = useElevenLabsChat();
 
+  const { setIsConnected } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Update context when connection changes
+  useEffect(() => {
+    setIsConnected(isConnected);
+  }, [isConnected, setIsConnected]);
 
   // Auto-scroll to bottom of messages
   const scrollToBottom = () => {
@@ -104,7 +111,7 @@ export const ChatInterface: React.FC = () => {
 
   // Third screen: Chat interface with connected state
   return (
-    <div className="w-full border border-black flex flex-col h-full relative">
+    <div className="w-full border border-black flex flex-col h-screen md:h-full relative">
       <div className="p-5 text-center border-b border-black">
         <div className="flex items-center justify-center gap-2.5">
           <div
