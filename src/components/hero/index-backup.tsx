@@ -1,5 +1,22 @@
-import { ArrowLeft } from 'lucide-react';
-import { ChatProvider } from '../../contexts/chat-provider';
+import { ArrowLeft } fro            <div className="mt-16 md:mt-0">
+              <div className="flex flex-col space-y-2 mb-16 md:mb-8 p-8 pb-4 md:pb-8">
+                <ArrowLeft className="h-10 w-10 mb-4" />
+                <Typography as="h1" size="h1" className="font-whyte">
+                  Try out<br></br>
+                  our AI talk bot. <br></br>
+                  It's
+                </Typography>
+                <AnimatedText />
+                <Typography
+                  as="h1"
+                  size="h1"
+                  className="font-whyte -mt-1 lg:mt-0"
+                >
+                  We all need
+                  <br></br>
+                  less emails.
+                </Typography>
+              </div>mport { ChatProvider } from '../../contexts/chat-provider';
 import { ChatInterface } from '../chat';
 import Logo from '../ui/logo';
 import Typography from '../ui/typography';
@@ -23,12 +40,12 @@ export default function Index() {
               <Logo />
             </div>
             <div className="mt-16 md:mt-0">
-              <div className="flex flex-col space-y-2 mb-16 md:mb-8 p-8 pb-4 md:pb-8">
+              <div className="flex flex-col space-y-2 mb-16 md:mb-8 p-8">
                 <ArrowLeft className="h-10 w-10 mb-4" />
                 <Typography as="h1" size="h1" className="font-whyte">
                   Try out<br></br>
                   our AI talk bot. <br></br>
-                  It's
+                  It’s
                 </Typography>
                 <AnimatedText />
                 <Typography
