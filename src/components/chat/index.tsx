@@ -19,7 +19,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setInputText,
     sendMessage,
     resetToIntro,
-    resetToIntroWithClearHistory,
     startNewConversation,
     toggleRecording,
     handleAcceptTerms,
