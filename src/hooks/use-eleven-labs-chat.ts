@@ -20,6 +20,7 @@ export interface UseElevenLabsChatReturn {
   connectToAgent: () => Promise<void>;
   disconnect: () => void;
   resetToIntro: () => void;
+  resetToIntroWithClearHistory: () => void;
   startNewConversation: () => Promise<void>;
   toggleRecording: () => Promise<void>;
   handleAcceptTerms: () => Promise<void>;
@@ -204,7 +205,18 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
     if (isConnected) {
       disconnect();
     }
-    // Reset all state
+    // Reset state but keep messages to preserve conversation history
+    setInputText('');
+    setError('');
+    setFlowStep('intro');
+  }, [isConnected, disconnect, setFlowStep]);
+
+  const resetToIntroWithClearHistory = useCallback(() => {
+    // Disconnect if currently connected
+    if (isConnected) {
+      disconnect();
+    }
+    // Reset all state including messages
     setMessages([]);
     setInputText('');
     setError('');
@@ -291,6 +303,7 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
     connectToAgent,
     disconnect,
     resetToIntro,
+    resetToIntroWithClearHistory,
     startNewConversation,
     toggleRecording,
     handleAcceptTerms,

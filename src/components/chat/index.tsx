@@ -19,6 +19,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setInputText,
     sendMessage,
     resetToIntro,
+    resetToIntroWithClearHistory,
     startNewConversation,
     toggleRecording,
     handleAcceptTerms,
@@ -59,8 +60,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     );
   }
 
-  // For mobile, don't render ChatScreen if we're not in chat step to prevent flashing
-  if (isMobile && flowStep !== 'chat') {
+  // For mobile, only show empty placeholder if we're in intro with no message history
+  // This prevents the flash when closing terms but preserves conversation history
+  if (isMobile && flowStep === 'intro' && messages.length === 0) {
     return <div className="h-full w-full" />; // Empty placeholder
   }
 
