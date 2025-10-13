@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import React, { useState } from 'react';
-import { ChatContext } from './chat-context';
+import { ChatContext, type FlowStep } from './chat-context';
 
 interface ChatProviderProps {
   children: ReactNode;
@@ -8,9 +8,20 @@ interface ChatProviderProps {
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
+  const [isMobileDialogOpen, setIsMobileDialogOpen] = useState(false);
+  const [flowStep, setFlowStep] = useState<FlowStep>('intro');
 
   return (
-    <ChatContext.Provider value={{ isConnected, setIsConnected }}>
+    <ChatContext.Provider
+      value={{
+        isConnected,
+        setIsConnected,
+        isMobileDialogOpen,
+        setIsMobileDialogOpen,
+        flowStep,
+        setFlowStep,
+      }}
+    >
       {children}
     </ChatContext.Provider>
   );

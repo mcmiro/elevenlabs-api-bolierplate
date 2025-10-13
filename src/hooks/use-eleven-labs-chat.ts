@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useChatContext } from '../contexts/chat-context';
 import type { ConnectionState, Message } from '../models';
 import { ElevenLabsService } from '../utils/eleven-labs-service';
 import { useAudioManager } from './use-audio-manager';
-
-export type FlowStep = 'intro' | 'terms' | 'chat';
 
 export interface UseElevenLabsChatReturn {
   // State
@@ -13,7 +12,6 @@ export interface UseElevenLabsChatReturn {
   connectionState: ConnectionState;
   selectedAgentId: string;
   error: string;
-  flowStep: FlowStep;
 
   // Actions
   setInputText: (text: string) => void;
@@ -21,9 +19,9 @@ export interface UseElevenLabsChatReturn {
   sendMessage: () => Promise<void>;
   connectToAgent: () => Promise<void>;
   disconnect: () => void;
+  resetToIntro: () => void;
   startNewConversation: () => Promise<void>;
   toggleRecording: () => Promise<void>;
-  handleLetDoIt: () => void;
   handleAcceptTerms: () => Promise<void>;
   handleCancelTerms: () => void;
 
@@ -42,8 +40,8 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
     useState<ConnectionState>('disconnected');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [error, setError] = useState<string>('');
-  const [flowStep, setFlowStep] = useState<FlowStep>('intro');
 
+  const { setFlowStep } = useChatContext();
   const elevenLabsServiceRef = useRef<ElevenLabsService | null>(null);
   const audioManager = useAudioManager();
 
@@ -201,6 +199,18 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
     // Keep conversation history visible and stay on chat screen
   }, [audioManager]);
 
+  const resetToIntro = useCallback(() => {
+    // Disconnect if currently connected
+    if (isConnected) {
+      disconnect();
+    }
+    // Reset all state
+    setMessages([]);
+    setInputText('');
+    setError('');
+    setFlowStep('intro');
+  }, [isConnected, disconnect, setFlowStep]);
+
   const startNewConversation = useCallback(async () => {
     // Reset the conversation state
     setMessages([]);
@@ -255,19 +265,15 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
     }
   }, [isConnected, audioManager]);
 
-  const handleLetDoIt = useCallback(() => {
-    setFlowStep('terms');
-  }, []);
-
   const handleAcceptTerms = useCallback(async () => {
     setFlowStep('chat');
     // Initialize the service and connect automatically
     await connectToAgent();
-  }, [connectToAgent]);
+  }, [connectToAgent, setFlowStep]);
 
   const handleCancelTerms = useCallback(() => {
     setFlowStep('intro');
-  }, []);
+  }, [setFlowStep]);
 
   return {
     // State
@@ -277,7 +283,6 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
     connectionState,
     selectedAgentId,
     error,
-    flowStep,
 
     // Actions
     setInputText,
@@ -285,9 +290,9 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
     sendMessage,
     connectToAgent,
     disconnect,
+    resetToIntro,
     startNewConversation,
     toggleRecording,
-    handleLetDoIt,
     handleAcceptTerms,
     handleCancelTerms,
 
