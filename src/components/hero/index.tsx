@@ -46,7 +46,7 @@ const HeroContent = () => {
                 <Typography as="h1" size="h1" className="font-whyte">
                   Try our AI talk bot.
                 </Typography>
-                <div className="flex gap-4">
+                <div className="flex gap-2 md:gap-4">
                   <Typography as="h1" size="h1" className="font-whyte">
                     It's
                   </Typography>
@@ -61,7 +61,6 @@ const HeroContent = () => {
                   <br></br>
                   less emails.
                 </Typography>
-                {/* Mobile AI Button - only visible on mobile and in intro state */}
                 <MobileAIButton />
               </div>
               <ChatLinks />
