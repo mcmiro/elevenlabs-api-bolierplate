@@ -58,11 +58,10 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
       if (agentList.length > 0 && !selectedAgentId) {
         setSelectedAgentId(agentList[0].agentId);
       }
-    } catch (err) {
+    } catch {
       setError(
         'Failed to initialize service. Please check your backend connection.'
       );
-      console.error('Service initialization failed:', err);
     }
   }, [selectedAgentId]);
 
@@ -93,8 +92,8 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
         onAudio: async (audioData: ArrayBuffer) => {
           try {
             await audioManager.playAudio(audioData);
-          } catch (err) {
-            console.error('useElevenLabsChat: Failed to play audio:', err);
+          } catch {
+            // Silently handle audio playback errors
           }
         },
         onError: (error: Error) => {
@@ -117,18 +116,12 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
           // Only set up audio chunk handler when connected, and auto-start recording
           if (state === 'connected') {
             const chunkHandler = (chunk: ArrayBuffer) => {
-              console.log(
-                '🎵 Received audio chunk from manager, size:',
-                chunk.byteLength
-              );
               try {
                 if (!elevenLabsServiceRef.current?.isConnected()) {
-                  console.log('🚫 Service not connected, dropping chunk');
                   return;
                 }
                 elevenLabsServiceRef.current?.sendAudioChunk(chunk);
               } catch (error) {
-                console.error('Audio chunk error:', error);
                 setError(
                   `Failed to send audio: ${
                     error instanceof Error ? error.message : 'Unknown error'
@@ -145,8 +138,7 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
               .then(() => {
                 setError('');
               })
-              .catch((err) => {
-                console.warn('Could not auto-start recording:', err);
+              .catch(() => {
                 setError(
                   'Could not start microphone automatically. Click the mic button to start recording.'
                 );
@@ -158,9 +150,8 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
           }
         },
       });
-    } catch (err) {
+    } catch {
       setError('Failed to connect to agent');
-      console.error('Connection failed:', err);
     }
   }, [selectedAgentId, audioManager]);
 
@@ -181,8 +172,7 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
     try {
       await elevenLabsServiceRef.current.sendTextMessage(inputText);
       setInputText('');
-    } catch (err) {
-      console.error('useElevenLabsChat: Failed to send message:', err);
+    } catch {
       setError('Failed to send message');
     }
   }, [inputText]);
@@ -248,7 +238,6 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
 
   const toggleRecording = useCallback(async () => {
     if (!isConnected) {
-      console.warn('useElevenLabsChat: Cannot record - not connected to agent');
       setError('Please connect to an agent first');
       return;
     }
@@ -262,11 +251,8 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
           audioManager.onAudioChunk = (chunk: ArrayBuffer) => {
             try {
               elevenLabsServiceRef.current?.sendAudioChunk(chunk);
-            } catch (error) {
-              console.error(
-                '❌ useElevenLabsChat: Failed to send audio chunk:',
-                error
-              );
+            } catch {
+              // Silently handle audio chunk errors
             }
           };
         }
@@ -275,11 +261,10 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
         // Clear any previous errors when recording starts successfully
         setError('');
       }
-    } catch (err) {
+    } catch {
       const errorMessage =
         'Failed to access microphone. Please check permissions.';
       setError(errorMessage);
-      console.error('useElevenLabsChat: Microphone error:', err);
     }
   }, [isConnected, audioManager]);
 

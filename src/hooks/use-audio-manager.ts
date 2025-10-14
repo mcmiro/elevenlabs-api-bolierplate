@@ -34,7 +34,6 @@ export const useAudioManager = (): AudioManager => {
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext)();
     } catch {
-      console.warn('AudioContext creation failed');
       audioContextRef.current = new (window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext)();
@@ -70,7 +69,6 @@ export const useAudioManager = (): AudioManager => {
             (window as unknown as { webkitAudioContext: typeof AudioContext })
               .webkitAudioContext)();
         } catch {
-          console.warn('AudioContext creation failed, using default');
           audioContextRef.current = new (window.AudioContext ||
             (window as unknown as { webkitAudioContext: typeof AudioContext })
               .webkitAudioContext)();
@@ -84,7 +82,7 @@ export const useAudioManager = (): AudioManager => {
         await audioContext.resume();
       }
 
-      // Use much smaller buffer size for minimal latency (256 samples = 16ms at 16kHz, 5.3ms at 48kHz)
+      // Use stable buffer size for reliable audio processing
       const source = audioContext.createMediaStreamSource(stream);
 
       // Add low-pass filter to prevent aliasing during downsampling
@@ -93,7 +91,7 @@ export const useAudioManager = (): AudioManager => {
       filter.frequency.value = 7500; // Anti-aliasing filter for 48kHz->16kHz conversion
       filter.Q.value = 0.5;
 
-      const processor = audioContext.createScriptProcessor(256, 1, 1); // Much smaller buffer size
+      const processor = audioContext.createScriptProcessor(1024, 1, 1); // Stable buffer size
 
       processor.onaudioprocess = (event) => {
         // Keep microphone active continuously - let ElevenLabs handle turn-taking
@@ -105,10 +103,10 @@ export const useAudioManager = (): AudioManager => {
           return;
         }
 
-        // Rate limiting: Send smaller chunks more frequently for better streaming
+        // Rate limiting: Use stable intervals
         const now = Date.now();
-        if (now - lastAudioSentRef.current < 10) {
-          // Very frequent chunks (10ms intervals)
+        if (now - lastAudioSentRef.current < 50) {
+          // 50ms intervals - stable and proven
           return; // Skip this chunk
         }
 
@@ -116,7 +114,7 @@ export const useAudioManager = (): AudioManager => {
         const inputData = inputBuffer.getChannelData(0);
         const contextSampleRate = audioContextRef.current?.sampleRate || 44100;
 
-        // Send all audio continuously - no silence detection
+        // Send all audio continuously for reliable transcription
         // ElevenLabs expects 16kHz PCM format
         const targetSampleRate = 16000;
 
@@ -127,30 +125,17 @@ export const useAudioManager = (): AudioManager => {
           const outputLength = Math.floor(inputData.length * resampleRatio);
           const resampledData = new Float32Array(outputLength);
 
-          // Higher quality resampling with Lanczos-like filtering for better quality
+          // Use proven linear interpolation for reliable resampling
           for (let i = 0; i < outputLength; i++) {
             const sourceIndex = i / resampleRatio;
             const index = Math.floor(sourceIndex);
             const fraction = sourceIndex - index;
 
             if (index < inputData.length - 1) {
-              // Cubic interpolation for better quality than linear
-              const p0 = inputData[Math.max(0, index - 1)];
-              const p1 = inputData[index];
-              const p2 = inputData[index + 1];
-              const p3 = inputData[Math.min(inputData.length - 1, index + 2)];
-
-              // Catmull-Rom spline interpolation
-              const t = fraction;
-              const t2 = t * t;
-              const t3 = t2 * t;
-
+              // Linear interpolation - stable and reliable
               resampledData[i] =
-                0.5 *
-                (2 * p1 +
-                  (-p0 + p2) * t +
-                  (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
-                  (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+                inputData[index] * (1 - fraction) +
+                inputData[index + 1] * fraction;
             } else {
               resampledData[i] =
                 inputData[Math.min(index, inputData.length - 1)];
@@ -176,14 +161,6 @@ export const useAudioManager = (): AudioManager => {
 
         lastAudioSentRef.current = now;
         onAudioChunkRef.current(arrayBuffer);
-
-        // Debug: Log very occasionally to avoid spam
-        if (Math.random() < 0.001) {
-          // Log ~0.1% of chunks
-          console.log(
-            `🎵 PCM_16000 chunk: ${contextSampleRate}Hz->16kHz, size: ${arrayBuffer.byteLength}b`
-          );
-        }
       };
 
       source.connect(filter);
@@ -194,12 +171,7 @@ export const useAudioManager = (): AudioManager => {
       mediaRecorderRef.current = processor as unknown as MediaRecorder;
 
       setIsRecording(true);
-      console.log(
-        '🎤 Recording started successfully, AudioContext sample rate:',
-        audioContext.sampleRate
-      );
     } catch (error) {
-      console.error('Failed to start recording:', error);
       setIsRecording(false);
       throw new Error(
         `Failed to access microphone: ${
@@ -236,19 +208,9 @@ export const useAudioManager = (): AudioManager => {
 
     isProcessingAudioRef.current = true;
     setIsPlaying(true);
-    console.log(
-      '🎵 Starting audio playback queue, chunks:',
-      audioQueueRef.current.length
-    );
 
     while (audioQueueRef.current.length > 0) {
       const audioData = audioQueueRef.current.shift()!;
-      console.log(
-        '🎶 Playing audio chunk, size:',
-        audioData.byteLength,
-        'remaining:',
-        audioQueueRef.current.length
-      );
 
       try {
         if (!audioContextRef.current) {
@@ -258,7 +220,6 @@ export const useAudioManager = (): AudioManager => {
               (window as unknown as { webkitAudioContext: typeof AudioContext })
                 .webkitAudioContext)();
           } catch {
-            console.warn('AudioContext creation failed, using default');
             audioContextRef.current = new (window.AudioContext ||
               (window as unknown as { webkitAudioContext: typeof AudioContext })
                 .webkitAudioContext)();
@@ -344,8 +305,7 @@ export const useAudioManager = (): AudioManager => {
 
           source.start(0);
         });
-      } catch (error) {
-        console.error('Error playing audio chunk:', error);
+      } catch {
         break;
       }
     }
@@ -367,8 +327,7 @@ export const useAudioManager = (): AudioManager => {
         }
 
         await processAudioQueue();
-      } catch (error) {
-        console.error('Audio playback error:', error);
+      } catch {
         setIsPlaying(false);
         isProcessingAudioRef.current = false;
       }
