@@ -117,12 +117,18 @@ export const useElevenLabsChat = (): UseElevenLabsChatReturn => {
           // Only set up audio chunk handler when connected, and auto-start recording
           if (state === 'connected') {
             const chunkHandler = (chunk: ArrayBuffer) => {
+              console.log(
+                '🎵 Received audio chunk from manager, size:',
+                chunk.byteLength
+              );
               try {
                 if (!elevenLabsServiceRef.current?.isConnected()) {
+                  console.log('🚫 Service not connected, dropping chunk');
                   return;
                 }
                 elevenLabsServiceRef.current?.sendAudioChunk(chunk);
               } catch (error) {
+                console.error('Audio chunk error:', error);
                 setError(
                   `Failed to send audio: ${
                     error instanceof Error ? error.message : 'Unknown error'

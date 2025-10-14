@@ -48,12 +48,12 @@ export class ElevenLabsService {
     // 3. Auto-detect based on current location
     if (typeof window !== 'undefined') {
       const currentUrl = window.location.origin;
-      
+
       // If we're on localhost:5173 (dev), point to localhost:3001 (backend)
       if (currentUrl.includes('localhost:5173')) {
         return 'http://localhost:3001';
       }
-      
+
       // If we're on Heroku or any other domain, use same domain
       return currentUrl;
     }
@@ -124,6 +124,9 @@ export class ElevenLabsService {
       const { signedUrl } = await response.json();
       this.ws = new WebSocket(signedUrl);
 
+      // Ensure WebSocket handles binary data properly for audio streaming
+      this.ws.binaryType = 'arraybuffer';
+
       this.ws.onopen = () => {
         this.onConnectionStateChange?.('connected');
         this.startHeartbeat();
@@ -134,7 +137,10 @@ export class ElevenLabsService {
             const initEvent = {
               type: 'conversation_initiation_client_data',
             };
+            console.log('📤 Sending conversation initiation message');
             this.ws!.send(JSON.stringify(initEvent));
+          } else {
+            console.error('❌ Cannot send initiation: WebSocket not open');
           }
         }, 100);
       };
@@ -217,12 +223,21 @@ export class ElevenLabsService {
   }
 
   private handleMessage(message: WebSocketMessage): void {
+    // Only log non-ping messages to reduce noise
+    if (message.type !== 'ping' && message.type !== 'pong') {
+      console.log('📨 Received WebSocket message:', message.type);
+    }
+
     switch (message.type) {
       case 'conversation_initiation_metadata': {
         const event =
           message.conversation_initiation_metadata_event as ConversationInitiationEvent;
         this.conversationId = event.conversation_id;
         this.conversationInitiated = true;
+        console.log(
+          '🎯 Conversation initiated successfully:',
+          event.conversation_id
+        );
         break;
       }
       case 'agent_response': {
@@ -247,6 +262,10 @@ export class ElevenLabsService {
         if (audioData && this.onAudio) {
           try {
             const audioBuffer = this.base64ToArrayBuffer(audioData);
+            console.log(
+              '🔊 Received audio chunk from ElevenLabs, size:',
+              audioBuffer.byteLength
+            );
 
             // Pass to audio queue for proper sequential playback (following official SDK pattern)
             this.onAudio(audioBuffer);
@@ -354,21 +373,30 @@ export class ElevenLabsService {
 
   async sendAudioChunk(audioData: ArrayBuffer): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.log('🚫 Audio chunk rejected: WebSocket not open');
       return; // Skip chunk if not connected
     }
 
     // Wait for conversation initiation to complete
     if (!this.conversationInitiated || !this.conversationId) {
+      console.log('🚫 Audio chunk rejected: Conversation not initiated', {
+        initiated: this.conversationInitiated,
+        conversationId: this.conversationId,
+      });
       return; // Skip this chunk
     }
 
     // Set conversation mode to audio when first audio chunk is sent
     if (this.conversationMode !== 'audio') {
       this.conversationMode = 'audio';
+      console.log('🎤 Switched to audio mode');
     }
 
     // Check WebSocket state before sending
     if (this.ws.readyState !== WebSocket.OPEN) {
+      console.log(
+        '🚫 Audio chunk rejected: WebSocket closed during processing'
+      );
       return; // Skip chunk if connection lost
     }
 
@@ -381,11 +409,17 @@ export class ElevenLabsService {
 
       // Final check if WebSocket is still open
       if (this.ws.readyState !== WebSocket.OPEN) {
+        console.log('🚫 Audio chunk rejected: WebSocket closed before send');
         return;
       }
 
       this.ws.send(JSON.stringify(audioEvent));
-    } catch {
+      console.log(
+        '✅ Audio chunk sent successfully, size:',
+        audioData.byteLength
+      );
+    } catch (error) {
+      console.error('❌ Failed to send audio chunk:', error);
       // Silently handle audio send errors to prevent breaking the stream
     }
   }
