@@ -41,6 +41,9 @@ app.use(
     credentials: true,
   })
 );
+
+app.options('*', cors());
+
 app.use(express.json());
 
 // Serve static files from the React app build directory (for production)
