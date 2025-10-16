@@ -5,6 +5,12 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://call.thesupply.com', // Add your production front-end here
+];
+
 // ES modules compatibility
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,10 +27,18 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === 'production'
-        ? true // Allow same origin in production (monorepo setup)
-        : ['http://localhost:5173', 'http://localhost:3000'],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS policy: This origin is not allowed'));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
   })
 );
 app.use(express.json());
